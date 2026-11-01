@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build artifacts & distributions
+client/dist/
+server/dist/
+shared/dist/
+dist/
+
+# Session storage & uploads
+server/sessions/
+sessions/
+
+# Android signing keys & test certificates (NEVER commit keys)
+server/testkey.jks
+*.jks
+*.keystore
+
+# Generated & temporary APK files
+*.apk
+*.ap_
+*.idsig
+
+# Runtime environment files
+server/.env
+server/.env.codespace
+client/.env
+.env
+.env.local
+
+# Runtime logs & process tracking
+.logs/
+.pids/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.vscode/*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/

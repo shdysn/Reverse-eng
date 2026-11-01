@@ -1,0 +1,29 @@
+{
+  "name": "Android Reverse Engineering Dashboard",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  "forwardPorts": [5173, 8000],
+  "portsAttributes": {
+    "5173": {
+      "label": "APK Dashboard",
+      "onAutoForward": "openPreview"
+    },
+    "8000": {
+      "label": "Node API Backend",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "bash setup-codespace.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      }
+    }
+  }
+}

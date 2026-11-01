@@ -1,0 +1,6 @@
+{
+  "name": "Android Reverse Engineering Dashboard",
+  "description": "Secure, authorized Android application analysis workspace with decompilation, manifest security scanning, Smali/Java code exploration, and test-key rebuilding.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

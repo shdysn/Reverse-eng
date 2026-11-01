@@ -1,0 +1,22 @@
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/client/node_modules/**": true,
+    "**/server/node_modules/**": true,
+    "**/client/dist/**": true,
+    "**/server/dist/**": true,
+    "**/server/sessions/**": true,
+    "**/.logs/**": true,
+    "**/.pids/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/server/sessions": true,
+    "**/.logs": true,
+    "**/.pids": true
+  }
+}

@@ -1,0 +1,1814 @@
+You are a senior full-stack TypeScript engineer, secure application architect, DevOps engineer, and UI/UX designer.
+
+Create a complete, production-structured, modern web application named:
+
+Android Reverse Engineering Dashboard
+
+This application is intended strictly for:
+
+- APKs owned by the user
+- Authorized Android application testing
+- Application security education
+- Malware analysis in an isolated lab
+- Development and debugging of Android applications
+
+Display a clear “Authorized Use Only” notice in the interface and README.
+
+Do not ask me follow-up questions. Make reasonable technical decisions and begin creating the complete project immediately.
+
+Do not provide pseudocode, incomplete snippets, placeholder components, fake APIs, non-functional buttons, TODO-only implementations, or abbreviated files.
+
+The project will be created in Google AI Studio and pushed to GitHub. It must be compatible with GitHub Codespaces and local Ubuntu/Linux development.
+
+==================================================
+1. REQUIRED TECHNOLOGY STACK
+==================================================
+
+Use the following stack:
+
+Frontend:
+
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- Monaco Editor through @monaco-editor/react
+- Lucide React icons
+- Native Fetch API
+- Responsive IDE-style interface
+
+Backend:
+
+- Node.js 20 or newer
+- Express.js
+- TypeScript
+- Multer for multipart chunk handling
+- Native fs/promises for filesystem access
+- Native path module
+- Native child_process.spawn for command execution
+- fast-xml-parser for AndroidManifest.xml analysis
+- Zod for request validation
+- UUID for cryptographically random session IDs
+- dotenv for environment configuration
+- Helmet for HTTP security headers
+- CORS middleware
+- Express rate limiting
+
+Development and deployment:
+
+- npm workspaces
+- GitHub
+- GitHub Codespaces
+- devcontainer.json
+- GitHub Actions
+- Ubuntu/Debian environment
+- Frontend port: 5173
+- Backend port: 8000
+
+External Android tools:
+
+- OpenJDK
+- keytool
+- apktool
+- JADX
+- zipalign
+- apksigner
+
+Do not use Python or FastAPI.
+
+Use TypeScript for both frontend and backend.
+
+==================================================
+2. PROJECT ARCHITECTURE
+==================================================
+
+Create a TypeScript monorepo using npm workspaces.
+
+Create the following complete project structure:
+
+android-re-dashboard/
+├── .devcontainer/
+│   └── devcontainer.json
+├── .github/
+│   └── workflows/
+│       └── build.yml
+├── .vscode/
+│   └── settings.json
+├── client/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── ApkUpload.tsx
+│   │   │   ├── CodeWorkspace.tsx
+│   │   │   ├── EditorTabs.tsx
+│   │   │   ├── FileTree.tsx
+│   │   │   ├── ManifestScanner.tsx
+│   │   │   ├── MobilePanels.tsx
+│   │   │   ├── StatusBar.tsx
+│   │   │   └── Toolbar.tsx
+│   │   ├── hooks/
+│   │   │   ├── useApkUpload.ts
+│   │   │   ├── useEditorTabs.ts
+│   │   │   └── useSession.ts
+│   │   ├── services/
+│   │   │   └── api.ts
+│   │   ├── types/
+│   │   │   └── index.ts
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   └── main.tsx
+│   ├── .env.example
+│   ├── index.html
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── tailwind.config.ts
+│   ├── tsconfig.json
+│   └── vite.config.ts
+├── server/
+│   ├── src/
+│   │   ├── config/
+│   │   │   └── env.ts
+│   │   ├── middleware/
+│   │   │   ├── errorHandler.ts
+│   │   │   ├── requestLogger.ts
+│   │   │   └── validateSession.ts
+│   │   ├── routes/
+│   │   │   ├── health.routes.ts
+│   │   │   ├── rebuild.routes.ts
+│   │   │   ├── scan.routes.ts
+│   │   │   ├── session.routes.ts
+│   │   │   └── upload.routes.ts
+│   │   ├── services/
+│   │   │   ├── apk.service.ts
+│   │   │   ├── command.service.ts
+│   │   │   ├── file.service.ts
+│   │   │   ├── manifest.service.ts
+│   │   │   ├── rebuild.service.ts
+│   │   │   └── session.service.ts
+│   │   ├── types/
+│   │   │   └── index.ts
+│   │   ├── utils/
+│   │   │   ├── apiError.ts
+│   │   │   ├── asyncHandler.ts
+│   │   │   ├── fileType.ts
+│   │   │   └── safePath.ts
+│   │   ├── app.ts
+│   │   └── index.ts
+│   ├── .env.example
+│   ├── package.json
+│   └── tsconfig.json
+├── shared/
+│   ├── api-types.ts
+│   └── package.json
+├── .gitignore
+├── package.json
+├── README.md
+├── setup-codespace.sh
+├── run-dashboard.sh
+└── stop-dashboard.sh
+
+Create every listed file with complete working content.
+
+If additional files are necessary, create them as well.
+
+==================================================
+3. ROOT NPM WORKSPACE
+==================================================
+
+Configure the root package.json with npm workspaces:
+
+- client
+- server
+- shared
+
+Include scripts similar to:
+
+- npm run dev
+- npm run build
+- npm run typecheck
+- npm run start
+- npm run setup
+- npm run clean
+
+Use concurrently to run frontend and backend during development.
+
+The following command must start both applications:
+
+npm run dev
+
+The following command must build all workspaces:
+
+npm run build
+
+The following command must type-check the entire project:
+
+npm run typecheck
+
+The root package.json must be private.
+
+Do not publish any workspace to npm.
+
+==================================================
+4. USER INTERFACE DESIGN
+==================================================
+
+Create a polished, modern developer IDE interface inspired by Visual Studio Code.
+
+Use an original interface and do not copy proprietary logos or branding.
+
+Use these approximate colors:
+
+- Main background: #0d1117
+- Secondary background: #161b22
+- Hover background: #21262d
+- Input background: #010409
+- Border: #30363d
+- Primary text: #c9d1d9
+- Muted text: #8b949e
+- Blue accent: #2f81f7
+- Green success: #238636
+- Amber warning: #d29922
+- Red error: #f85149
+
+Desktop layout:
+
+- Top toolbar
+- Left file explorer, approximately 270px wide
+- Center multi-tab Monaco editor
+- Right manifest security panel, approximately 320px wide
+- Bottom status bar
+
+The center editor must fill all remaining space.
+
+Use resizable or collapsible side panels when practical.
+
+Mobile layout:
+
+- The layout must remain usable on phones.
+- File explorer and security scanner should open as mobile drawers or panels.
+- Toolbar actions should remain touch-friendly.
+- Tabs should scroll horizontally.
+- Upload controls must fit small screens.
+- Avoid fixed widths that cause horizontal page overflow.
+- Monaco Editor must automatically resize.
+- Use minimum touch target sizes of approximately 40px.
+- Add buttons for toggling Explorer and Security panels.
+
+==================================================
+5. TOP TOOLBAR
+==================================================
+
+The toolbar must include:
+
+- Application icon
+- “APK Studio” title
+- “Authorized Analysis Workspace” subtitle
+- Upload New APK button
+- Save Current File button
+- Rescan Manifest button
+- Rebuild APK button
+- Download Signed APK button
+- Explorer toggle on mobile
+- Security panel toggle on mobile
+
+Button behavior:
+
+- Save remains disabled when there is no modified file.
+- Rescan remains disabled when no decompiled session exists.
+- Rebuild remains disabled during upload, decompilation, or rebuilding.
+- Download appears only after successful signing.
+- Every button must show an icon and accessible label.
+- Show tooltips where useful.
+- Do not implement non-functional interface controls.
+
+==================================================
+6. APK UPLOAD INTERFACE
+==================================================
+
+Create a prominent drag-and-drop upload area.
+
+Requirements:
+
+- Accept only .apk files.
+- Support file picker selection.
+- Support drag-and-drop.
+- Clearly show the selected filename.
+- Show file size in a human-readable format.
+- Use an 8 MiB chunk size.
+- Show upload progress from 0 to 100 percent.
+- Show the number of uploaded chunks.
+- Disable duplicate upload attempts during processing.
+- Allow retry after failure.
+- Allow resetting the workspace.
+- Show clear validation errors.
+- Do not rely only on the browser MIME type.
+- Do not load the entire APK into browser memory beyond normal File object handling.
+
+Show these processing stages:
+
+1. Preparing session
+2. Uploading APK
+3. Joining chunks
+4. Validating APK
+5. Running apktool
+6. Running JADX
+7. Scanning AndroidManifest.xml
+8. Ready
+
+The progress UI must make clear when upload is complete but server-side processing continues.
+
+==================================================
+7. UPLOAD API
+==================================================
+
+Implement the following API:
+
+POST /api/uploads/init
+
+Request body:
+
+{
+  "filename": "application.apk",
+  "size": 12345678,
+  "chunks": 2
+}
+
+Validate the body with Zod.
+
+Return:
+
+{
+  "success": true,
+  "data": {
+    "sessionId": "32-character-session-id",
+    "chunkSize": 8388608
+  }
+}
+
+Upload chunks through:
+
+PUT /api/uploads/:sessionId/chunks/:chunkIndex
+
+Use multipart/form-data.
+
+The file field must be named:
+
+file
+
+Complete the upload through:
+
+POST /api/uploads/:sessionId/complete
+
+The frontend must upload chunks sequentially or with a small controlled concurrency limit.
+
+Do not upload every chunk simultaneously.
+
+Provide AbortController support so an upload can be cancelled.
+
+==================================================
+8. SESSION STORAGE
+==================================================
+
+Each upload must use an isolated session directory.
+
+Use this structure:
+
+server/sessions/{sessionId}/
+├── chunks/
+├── input.apk
+├── decoded/
+├── java/
+├── build/
+└── meta.json
+
+Session requirements:
+
+- Generate the ID using UUID v4 and remove hyphens, or use equivalent cryptographically secure randomness.
+- Validate session IDs with:
+  /^[0-9a-f]{32}$/
+- Never use the uploaded filename as a filesystem path.
+- Save the original filename only as metadata.
+- Never expose absolute server paths to the browser.
+- Create separate directories for every session.
+- Never mix files from different sessions.
+- Reject symbolic links.
+- Reject path traversal attempts.
+- Add a session deletion endpoint.
+- Implement expired-session cleanup.
+- Make the session lifetime configurable.
+- Do not delete active sessions.
+- Catch and report filesystem errors safely.
+
+Use environment variables:
+
+WORK_ROOT
+MAX_APK_BYTES
+MAX_CHUNK_BYTES
+MAX_TEXT_BYTES
+SESSION_TTL_HOURS
+
+Recommended defaults:
+
+- MAX_APK_BYTES: 1073741824
+- MAX_CHUNK_BYTES: 16777216
+- MAX_TEXT_BYTES: 2097152
+- SESSION_TTL_HOURS: 12
+
+==================================================
+9. SECURE FILESYSTEM HANDLING
+==================================================
+
+Create a reusable safePath utility.
+
+It must:
+
+1. Accept a trusted session root and a relative path.
+2. Resolve the final path.
+3. Verify that it remains inside the trusted root.
+4. Reject absolute paths from API input.
+5. Reject null bytes.
+6. Reject paths containing unsafe traversal.
+7. Reject unsafe symbolic links.
+8. Use path.relative for robust containment checks.
+9. Work correctly on Linux.
+10. Never rely only on string startsWith checks for path security.
+
+Only allow file modifications inside:
+
+- decoded/
+- java/
+
+Treat these locations as read-only:
+
+- input.apk
+- chunks/
+- build/
+- meta.json
+- session root metadata
+
+For rebuild-affecting edits, explain that changes normally belong in:
+
+- decoded/smali/
+- decoded/smali_classes*/
+- decoded/res/
+- decoded/AndroidManifest.xml
+
+JADX Java output should be described as primarily informational and may not automatically affect the rebuilt APK.
+
+==================================================
+10. APK VALIDATION
+==================================================
+
+Before executing any CLI tool:
+
+- Confirm the declared file size matches the joined file.
+- Confirm the filename metadata ends in .apk.
+- Check the ZIP magic bytes.
+- Open and inspect the ZIP container.
+- Confirm AndroidManifest.xml exists in the APK archive.
+- Limit ZIP entry count.
+- Reject suspicious absolute ZIP paths.
+- Reject entries containing directory traversal.
+- Detect unreasonable decompression ratios where practical.
+- Return a meaningful error if the file is not a valid APK container.
+
+Do not extract the APK directly using an unsafe generic extraction routine.
+
+Use apktool as the controlled decoder.
+
+Uploaded APKs must be treated as untrusted files.
+
+==================================================
+11. SECURE COMMAND EXECUTION
+==================================================
+
+Create a central command execution service using:
+
+child_process.spawn
+
+Mandatory rules:
+
+- Never use child_process.exec.
+- Never use execSync.
+- Never use shell: true.
+- Never construct a command by concatenating user input.
+- Pass every argument as a separate array element.
+- Set shell to false.
+- Use server-controlled executable names.
+- Use server-controlled flags.
+- Use server-generated input and output paths.
+- Do not accept executable names from the frontend.
+- Do not accept CLI options from the frontend.
+- Do not provide an arbitrary command execution endpoint.
+- Set a configurable timeout.
+- Capture stdout and stderr.
+- Limit captured output size.
+- Kill timed-out processes.
+- Handle process spawn failures.
+- Return sanitized errors.
+- Do not expose environment secrets in logs.
+- Track the current processing stage.
+- Prevent concurrent rebuilds within one session.
+
+Use environment variables for server administrator configuration:
+
+APKTOOL_BIN
+JADX_BIN
+ZIPALIGN_BIN
+APKSIGNER_BIN
+COMMAND_TIMEOUT_MS
+COMMAND_OUTPUT_LIMIT
+
+Provide defaults:
+
+APKTOOL_BIN=apktool
+JADX_BIN=jadx
+ZIPALIGN_BIN=zipalign
+APKSIGNER_BIN=apksigner
+COMMAND_TIMEOUT_MS=900000
+COMMAND_OUTPUT_LIMIT=100000
+
+Example secure pattern:
+
+spawn(executable, argumentsArray, {
+  shell: false,
+  cwd: trustedWorkingDirectory,
+  env: controlledEnvironment
+})
+
+Never place browser-submitted values into the executable or arguments array unless they have first been converted into trusted server-generated values.
+
+==================================================
+12. APK DECOMPILATION PIPELINE
+==================================================
+
+After all chunks are received:
+
+1. Verify every expected chunk exists.
+2. Sort chunks by numeric chunk index.
+3. Join chunks into input.apk.
+4. Verify the final size.
+5. Validate the APK/ZIP structure.
+6. Remove temporary chunks after successful assembly.
+7. Run apktool.
+8. Run JADX.
+9. Scan AndroidManifest.xml.
+10. Build the file tree.
+11. Return results to the frontend.
+
+Run apktool as:
+
+apktool d -f INPUT_APK -o DECODED_DIRECTORY
+
+Run JADX as:
+
+jadx -d JAVA_DIRECTORY INPUT_APK
+
+Do not allow the browser to override these flags or paths.
+
+If apktool succeeds but JADX fails:
+
+- Keep the apktool output.
+- Return a partial-success status.
+- Allow manifest/resource inspection.
+- Display a warning in the interface.
+- Do not falsely report full success.
+
+If JADX succeeds but apktool fails:
+
+- Return an error because rebuilding and decoded manifest analysis require apktool output.
+- Preserve safe diagnostic logs for the current session.
+
+==================================================
+13. FILE TREE API
+==================================================
+
+Create:
+
+GET /api/sessions/:sessionId/tree
+
+Return a nested file tree.
+
+Each node should include:
+
+{
+  "name": "AndroidManifest.xml",
+  "path": "decoded/AndroidManifest.xml",
+  "type": "file",
+  "size": 1234,
+  "extension": ".xml",
+  "editable": true,
+  "binary": false
+}
+
+Folder nodes should include:
+
+{
+  "name": "res",
+  "path": "decoded/res",
+  "type": "directory",
+  "children": []
+}
+
+Requirements:
+
+- Sort directories before files.
+- Sort names alphabetically.
+- Exclude symbolic links.
+- Include relative paths only.
+- Configure maximum recursion depth.
+- Configure maximum nodes returned.
+- Mark oversized files.
+- Mark binary files.
+- Do not try to read every file’s complete content when building the tree.
+- Return a truncation warning if the tree exceeds limits.
+
+The frontend explorer must:
+
+- Expand and collapse directories.
+- Use file and folder icons.
+- Highlight the active file.
+- Preserve expanded state.
+- Use monospace labels.
+- Display decoded, java, assets, res, Smali, and Java source directories.
+- Show empty-folder messages.
+- Avoid rendering all hidden nested content before expansion where practical.
+- Display binary files as non-editable.
+- Handle large trees without freezing the UI.
+
+==================================================
+14. FILE READING AND EDITING API
+==================================================
+
+Create:
+
+GET /api/sessions/:sessionId/file?path=relative/path
+
+Requirements:
+
+- Validate the session.
+- Resolve the path safely.
+- Reject directories.
+- Reject binary files.
+- Reject symbolic links.
+- Reject oversized text files.
+- Return UTF-8 content.
+- Return only relative paths.
+- Return an appropriate language identifier.
+
+Response shape:
+
+{
+  "success": true,
+  "data": {
+    "path": "decoded/AndroidManifest.xml",
+    "content": "...",
+    "language": "xml",
+    "editable": true,
+    "size": 1234
+  }
+}
+
+Create:
+
+PUT /api/sessions/:sessionId/file?path=relative/path
+
+Request body:
+
+{
+  "content": "updated text"
+}
+
+Requirements:
+
+- Validate with Zod.
+- Allow saving only in decoded or java.
+- Reject input.apk, build outputs, metadata, and session files.
+- Enforce maximum text size.
+- Save as UTF-8.
+- Use safe path validation.
+- Save atomically through a temporary file and rename.
+- Return updated file metadata.
+- Re-scan the manifest automatically when AndroidManifest.xml is saved.
+
+==================================================
+15. MONACO EDITOR
+==================================================
+
+Use @monaco-editor/react.
+
+Requirements:
+
+- Use the vs-dark theme.
+- Enable automatic layout.
+- Enable line numbers.
+- Enable code folding.
+- Enable bracket matching.
+- Enable minimap.
+- Enable find and replace.
+- Enable scroll beyond last line only if appropriate.
+- Use font size 14.
+- Use a professional monospace font stack.
+- Allow word wrap to be toggled.
+- Show file path as a breadcrumb.
+- Show current cursor position.
+- Show file language.
+- Show dirty state.
+- Support Ctrl+S or Cmd+S to save.
+- Prevent browser Save Page behavior when editor save is intended.
+- Warn before closing a dirty editor tab.
+- Support multiple editor tabs.
+- Support horizontal tab scrolling.
+- Preserve unsaved content when moving between tabs.
+- Avoid duplicate tabs for the same path.
+
+Language mapping:
+
+- .java → java
+- .xml → xml
+- .json → json
+- .js → javascript
+- .jsx → javascript
+- .ts → typescript
+- .tsx → typescript
+- .css → css
+- .html → html
+- .md → markdown
+- .yml and .yaml → yaml
+- .properties → plaintext
+- .txt → plaintext
+
+For .smali files:
+
+- Register a simple custom Monaco language named “smali”.
+- Add useful tokenization for:
+  - directives beginning with a dot
+  - registers such as v0, v1, p0, p1
+  - comments beginning with #
+  - string values
+  - method names
+  - class descriptors such as Lcom/example/Class;
+  - basic Smali instructions
+- If custom registration fails, gracefully fall back to plaintext.
+
+Do not execute any displayed source code.
+
+Do not render source content as HTML.
+
+==================================================
+16. EDITOR TABS
+==================================================
+
+Each editor tab must show:
+
+- File icon
+- Filename
+- Dirty indicator
+- Close button
+
+Tab functionality:
+
+- Open a file when clicked in the explorer.
+- Reuse an existing tab if already open.
+- Set the selected tab active.
+- Close clean tabs immediately.
+- Ask before closing dirty tabs.
+- Keep multiple files open.
+- Update tab state after saving.
+- Pick a nearby tab when the active tab is closed.
+- Avoid losing unsaved text during normal panel transitions.
+
+Add “Close”, “Close Others”, and “Close All” actions if practical.
+
+==================================================
+17. MANIFEST SECURITY SCANNER
+==================================================
+
+Parse:
+
+decoded/AndroidManifest.xml
+
+Use fast-xml-parser.
+
+Correctly handle the Android namespace:
+
+http://schemas.android.com/apk/res/android
+
+Scan for:
+
+1. Dangerous permissions
+2. Exported activities
+3. Exported activity aliases
+4. Exported services
+5. Exported broadcast receivers
+6. Exported content providers
+7. Whether exported components have a protecting permission
+8. android:debuggable="true"
+9. android:allowBackup="true"
+10. android:usesCleartextTraffic="true"
+11. Missing application element
+12. Manifest parsing errors
+13. Components with intent filters where exported behavior needs review
+14. Network security configuration presence
+15. Shared user ID when present
+16. Legacy external storage flags when present
+
+Dangerous permissions must include at least:
+
+android.permission.READ_CALENDAR
+android.permission.WRITE_CALENDAR
+android.permission.CAMERA
+android.permission.READ_CONTACTS
+android.permission.WRITE_CONTACTS
+android.permission.GET_ACCOUNTS
+android.permission.ACCESS_FINE_LOCATION
+android.permission.ACCESS_COARSE_LOCATION
+android.permission.ACCESS_BACKGROUND_LOCATION
+android.permission.RECORD_AUDIO
+android.permission.READ_PHONE_STATE
+android.permission.READ_PHONE_NUMBERS
+android.permission.CALL_PHONE
+android.permission.ANSWER_PHONE_CALLS
+android.permission.READ_CALL_LOG
+android.permission.WRITE_CALL_LOG
+android.permission.ADD_VOICEMAIL
+android.permission.USE_SIP
+android.permission.PROCESS_OUTGOING_CALLS
+android.permission.BODY_SENSORS
+android.permission.BODY_SENSORS_BACKGROUND
+android.permission.ACTIVITY_RECOGNITION
+android.permission.SEND_SMS
+android.permission.RECEIVE_SMS
+android.permission.READ_SMS
+android.permission.RECEIVE_WAP_PUSH
+android.permission.RECEIVE_MMS
+android.permission.READ_EXTERNAL_STORAGE
+android.permission.WRITE_EXTERNAL_STORAGE
+android.permission.READ_MEDIA_IMAGES
+android.permission.READ_MEDIA_VIDEO
+android.permission.READ_MEDIA_AUDIO
+android.permission.POST_NOTIFICATIONS
+android.permission.BLUETOOTH_SCAN
+android.permission.BLUETOOTH_CONNECT
+android.permission.BLUETOOTH_ADVERTISE
+
+Return structured findings:
+
+{
+  "summary": {
+    "critical": 0,
+    "high": 1,
+    "medium": 3,
+    "low": 2,
+    "informational": 4
+  },
+  "dangerousPermissions": [],
+  "exportedComponents": [],
+  "applicationFlags": {},
+  "warnings": []
+}
+
+Each finding should include:
+
+- ID
+- Title
+- Category
+- Severity
+- Description
+- Evidence
+- Component name when applicable
+- Protecting permission when applicable
+- Recommendation
+
+Important scanner behavior:
+
+- Do not claim that every exported component is automatically vulnerable.
+- Mark exported components without protecting permissions as higher priority for review.
+- Mark protected exported components separately.
+- Explain that static manifest scanning is not a definitive vulnerability assessment.
+- Handle one object or multiple array values produced by XML parsing.
+- Handle missing optional elements safely.
+- Return parse failures as controlled findings instead of crashing the API.
+
+==================================================
+18. SECURITY SCANNER USER INTERFACE
+==================================================
+
+Create a dedicated right-side scanner panel.
+
+Display:
+
+- Total findings
+- Severity counts
+- Dangerous permissions
+- Exported components
+- Application flags
+- Warnings
+- Last scan time
+- Rescan button
+
+Use colors:
+
+- Critical and high: red
+- Medium: amber
+- Low: blue
+- Informational or clean: green/neutral
+
+Each component finding must show:
+
+- Component type
+- Component class name
+- Exported status
+- Required permission
+- Severity
+- Explanation
+
+Provide expandable finding cards.
+
+Show:
+
+“Static findings require manual verification and do not automatically prove exploitability.”
+
+==================================================
+19. REBUILD PIPELINE
+==================================================
+
+Create:
+
+POST /api/sessions/:sessionId/rebuild
+
+The rebuild process must run:
+
+1. apktool b
+2. zipalign
+3. apksigner sign
+4. apksigner verify
+
+Commands:
+
+apktool b DECODED_DIRECTORY -o UNSIGNED_APK
+
+zipalign -f -p 4 UNSIGNED_APK ALIGNED_APK
+
+apksigner sign \
+  --ks TEST_KEYSTORE \
+  --ks-key-alias TEST_KEY_ALIAS \
+  --ks-pass pass:TEST_KEY_PASSWORD \
+  --key-pass pass:TEST_KEY_PASSWORD \
+  --out SIGNED_APK \
+  ALIGNED_APK
+
+apksigner verify --verbose SIGNED_APK
+
+Important:
+
+- Always run zipalign before apksigner.
+- Remove stale build outputs before rebuilding.
+- Never modify input.apk.
+- Use a configurable disposable test key.
+- Never use or request a production signing key.
+- Do not return signing passwords to the frontend.
+- Do not include passwords in command logs.
+- Mask secrets before writing logs.
+- Verify that signed.apk exists.
+- Verify that signed.apk is not empty.
+- Run apksigner verification before returning success.
+- Prevent multiple simultaneous rebuilds for the same session.
+- Return useful stage information.
+- Return sanitized command output when a build fails.
+
+Successful response:
+
+{
+  "success": true,
+  "data": {
+    "downloadUrl": "/api/sessions/SESSION_ID/download",
+    "filename": "rebuilt-signed.apk",
+    "size": 12345678,
+    "verified": true
+  }
+}
+
+==================================================
+20. SIGNED APK DOWNLOAD
+==================================================
+
+Create:
+
+GET /api/sessions/:sessionId/download
+
+Requirements:
+
+- Validate session ID.
+- Confirm signed.apk exists.
+- Confirm signing verification succeeded.
+- Use the correct APK content type:
+  application/vnd.android.package-archive
+- Use Content-Disposition attachment.
+- Return filename:
+  rebuilt-signed.apk
+- Do not reveal absolute server paths.
+- Disable caching where appropriate.
+- Return a controlled 404 when no build exists.
+
+==================================================
+21. SESSION DELETION
+==================================================
+
+Create:
+
+DELETE /api/sessions/:sessionId
+
+Requirements:
+
+- Validate the session ID.
+- Stop or reject deletion if an operation is active.
+- Delete only the validated session directory.
+- Never accept an arbitrary directory path.
+- Return deletion status.
+- Clear corresponding frontend state after successful deletion.
+
+Add a “Delete Session” or “Reset Workspace” action with a confirmation prompt.
+
+==================================================
+22. HEALTH ENDPOINT
+==================================================
+
+Create:
+
+GET /api/health
+
+Return:
+
+{
+  "success": true,
+  "data": {
+    "status": "healthy",
+    "version": "1.0.0",
+    "node": "version string",
+    "tools": {
+      "apktool": true,
+      "jadx": true,
+      "zipalign": true,
+      "apksigner": true,
+      "java": true
+    }
+  }
+}
+
+Tool checks must:
+
+- Use controlled command names.
+- Avoid arbitrary shell execution.
+- Handle missing tools.
+- Avoid blocking the endpoint for a long time.
+- Not expose full server paths unnecessarily.
+
+Show tool availability in the frontend.
+
+Prevent upload processing when required tools are missing, and explain which tools need installation.
+
+==================================================
+23. STANDARD API RESPONSE FORMAT
+==================================================
+
+Use consistent successful responses:
+
+{
+  "success": true,
+  "data": {}
+}
+
+Use consistent error responses:
+
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_APK",
+    "message": "The uploaded file is not a valid APK.",
+    "details": null
+  }
+}
+
+Requirements:
+
+- Do not expose stack traces in production.
+- Log server-side stack traces safely.
+- Provide user-readable messages.
+- Set appropriate HTTP status codes.
+- Use a central error-handling middleware.
+- Add a not-found API handler.
+
+==================================================
+24. SERVER CONFIGURATION
+==================================================
+
+The Express server must:
+
+- Listen on 0.0.0.0
+- Use port 8000 by default
+- Use Helmet
+- Use restricted CORS
+- Use JSON body-size limits
+- Use URL-encoded body-size limits
+- Use rate limiting
+- Use request logging
+- Include request IDs where practical
+- Avoid exposing x-powered-by
+- Include graceful shutdown for SIGINT and SIGTERM
+- Handle unhandled promise rejection logging
+- Validate environment variables at startup
+- Create the configured work directory
+- Fail clearly when critical configuration is invalid
+
+Environment variables:
+
+NODE_ENV
+PORT
+FRONTEND_ORIGIN
+WORK_ROOT
+MAX_APK_BYTES
+MAX_CHUNK_BYTES
+MAX_TEXT_BYTES
+SESSION_TTL_HOURS
+APKTOOL_BIN
+JADX_BIN
+ZIPALIGN_BIN
+APKSIGNER_BIN
+COMMAND_TIMEOUT_MS
+COMMAND_OUTPUT_LIMIT
+TEST_KEYSTORE
+TEST_KEY_ALIAS
+TEST_KEY_PASSWORD
+
+Provide server/.env.example without real secrets.
+
+==================================================
+25. FRONTEND API SERVICE
+==================================================
+
+Create one centralized API service.
+
+Requirements:
+
+- Read backend URL from:
+  VITE_API_URL
+- Fall back to:
+  http://localhost:8000
+- Use URL-safe path encoding.
+- Parse standard API responses.
+- Throw user-readable errors.
+- Support AbortController for uploads.
+- Provide typed methods for:
+  - health
+  - initialize upload
+  - upload chunk
+  - complete upload
+  - fetch tree
+  - read file
+  - save file
+  - scan manifest
+  - rebuild APK
+  - get download URL
+  - delete session
+- Do not expose environment secrets in frontend code.
+- Never include signing information in browser code.
+
+==================================================
+26. FRONTEND STATE MANAGEMENT
+==================================================
+
+Use React hooks and component state.
+
+Do not add Redux unless genuinely necessary.
+
+Track:
+
+- Current session ID
+- Original APK name
+- Upload progress
+- Processing stage
+- File tree
+- Expanded directories
+- Open editor tabs
+- Active tab
+- Dirty files
+- Manifest findings
+- Rebuild progress
+- Download URL
+- Backend health
+- Tool availability
+- Mobile panel visibility
+- Error notifications
+
+Persist only safe, non-sensitive UI preferences in localStorage.
+
+Do not persist:
+
+- APK contents
+- File contents
+- Signing credentials
+- Absolute paths
+- Sensitive backend errors
+
+Optionally persist:
+
+- Editor font size
+- Word-wrap setting
+- Explorer width
+- Security panel visibility
+
+==================================================
+27. USER NOTIFICATIONS
+==================================================
+
+Create professional notifications for:
+
+- Upload started
+- Upload cancelled
+- Upload failed
+- Decompilation completed
+- Partial JADX failure
+- File saved
+- Manifest rescanned
+- Rebuild started
+- Rebuild failed
+- Signed APK ready
+- Session deleted
+- Backend unavailable
+- Required CLI tool missing
+
+Notifications must:
+
+- Be accessible.
+- Use aria-live when appropriate.
+- Not block the interface unnecessarily.
+- Include a dismiss button.
+- Avoid showing raw HTML.
+- Avoid showing sensitive command details.
+
+==================================================
+28. ACCESSIBILITY
+==================================================
+
+Implement:
+
+- Semantic buttons
+- Keyboard navigation
+- Visible focus states
+- ARIA labels for icon-only controls
+- Accessible upload input
+- aria-live status updates
+- Adequate color contrast
+- Keyboard-accessible file tree
+- Keyboard-accessible editor tabs
+- Meaningful loading text
+- Do not rely only on color to communicate severity
+
+==================================================
+29. CODESPACES SETUP SCRIPT
+==================================================
+
+Create setup-codespace.sh.
+
+It must begin with:
+
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+The script must:
+
+1. Confirm it is running from the project root.
+2. Confirm package.json, client/, and server/ exist.
+3. Run apt-get update.
+4. Install:
+   - default-jdk
+   - nodejs
+   - npm
+   - apktool
+   - zipalign
+   - apksigner
+   - curl
+   - unzip
+   - zip
+   - git
+   - jq
+   - ca-certificates
+5. Check whether JADX already exists.
+6. If JADX is missing, query the official JADX GitHub releases API.
+7. Download the latest stable JADX command-line ZIP.
+8. Extract JADX under /opt/jadx.
+9. Create a symlink:
+   /usr/local/bin/jadx
+10. Verify:
+    - node
+    - npm
+    - java
+    - keytool
+    - apktool
+    - jadx
+    - zipalign
+    - apksigner
+11. Run npm install from the monorepo root.
+12. Create a disposable test key if it does not exist.
+13. Never overwrite an existing test key.
+14. Create server/.env.codespace.
+15. Create client/.env.
+16. Calculate Codespaces frontend and backend URLs.
+17. Update .gitignore safely.
+18. Set executable permissions for run and stop scripts.
+19. Run npm run typecheck.
+20. Run npm run build.
+21. Print final startup instructions and URLs.
+
+Use:
+
+CODESPACE_NAME
+GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN
+
+Build URLs using:
+
+https://${CODESPACE_NAME}-5173.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}
+
+and:
+
+https://${CODESPACE_NAME}-8000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}
+
+Outside Codespaces, fall back to:
+
+http://localhost:5173
+http://localhost:8000
+
+Do not hardcode any particular Codespace name.
+
+Generate a disposable key using keytool with:
+
+- Alias: androidtestkey
+- Algorithm: RSA
+- Key size: 2048
+- Development-only password
+- Clearly label it as a disposable test key
+
+Never commit this key.
+
+==================================================
+30. RUN SCRIPT
+==================================================
+
+Create run-dashboard.sh.
+
+It must:
+
+- Use bash strict mode.
+- Run from repository root.
+- Load server/.env.codespace when available.
+- Create .logs/ and .pids/.
+- Stop only stale processes recorded in this project’s PID files.
+- Start the Express backend on port 8000.
+- Start Vite on port 5173.
+- Save both PIDs.
+- Write separate logs:
+  - .logs/backend.log
+  - .logs/frontend.log
+- Wait for backend /api/health.
+- Print frontend and backend URLs.
+- Trap Ctrl+C.
+- Stop only its own recorded child processes.
+- Avoid broad process-killing commands.
+
+Do not use:
+
+pkill node
+pkill npm
+killall node
+pkill -f
+killall java
+
+The script must not kill unrelated processes.
+
+==================================================
+31. STOP SCRIPT
+==================================================
+
+Create stop-dashboard.sh.
+
+It must:
+
+- Use bash strict mode.
+- Read:
+  - .pids/backend.pid
+  - .pids/frontend.pid
+- Check whether each process exists.
+- Stop only the recorded processes.
+- Wait briefly for graceful shutdown.
+- Use SIGKILL only for the same recorded process if graceful shutdown fails.
+- Remove stale PID files.
+- Print clear status messages.
+- Never stop unrelated Node.js or Java processes.
+
+==================================================
+32. DEV CONTAINER
+==================================================
+
+Create:
+
+.devcontainer/devcontainer.json
+
+Requirements:
+
+- Use an official Microsoft development container image.
+- Include Node.js 20.
+- Include the necessary Ubuntu setup.
+- Forward ports:
+  - 5173
+  - 8000
+- Label port 5173:
+  APK Dashboard
+- Label port 8000:
+  FastAPI Backend or preferably Node API Backend
+- Automatically open the frontend port.
+- Keep the backend port silent.
+- Run setup-codespace.sh as postCreateCommand.
+- Install useful VS Code extensions:
+  - ESLint
+  - Prettier
+  - Tailwind CSS IntelliSense
+- Do not store secrets in devcontainer.json.
+- Do not embed the signing-key password in devcontainer.json.
+
+==================================================
+33. VS CODE SETTINGS
+==================================================
+
+Create:
+
+.vscode/settings.json
+
+Configure:
+
+- Automatic port forwarding
+- Port labels
+- TypeScript formatting
+- ESLint integration
+- Format on save where appropriate
+- Exclude node_modules, sessions, build output, and logs from file watching
+- Do not hide important project source files
+
+==================================================
+34. GITHUB ACTIONS
+==================================================
+
+Create:
+
+.github/workflows/build.yml
+
+Run on:
+
+- Push to main
+- Pull requests targeting main
+
+Workflow requirements:
+
+1. Check out repository.
+2. Set up Node.js 20.
+3. Enable npm dependency caching.
+4. Run npm ci.
+5. Run npm run typecheck.
+6. Run npm run build.
+7. Do not create signing keys.
+8. Do not run APK tools.
+9. Do not commit generated output.
+10. Do not require repository secrets for ordinary build validation.
+
+The workflow should validate TypeScript and frontend/backend builds.
+
+==================================================
+35. GITIGNORE
+==================================================
+
+Create a complete .gitignore containing at least:
+
+node_modules/
+client/node_modules/
+server/node_modules/
+client/dist/
+server/dist/
+shared/dist/
+server/sessions/
+server/testkey.jks
+server/.env
+server/.env.codespace
+client/.env
+.logs/
+.pids/
+*.apk
+*.ap_
+*.jks
+*.keystore
+coverage/
+.DS_Store
+npm-debug.log*
+.vscode/*.log
+
+Do not ignore:
+
+- .env.example files
+- Source files
+- devcontainer.json
+- GitHub Actions workflow
+- package-lock.json
+
+Never commit:
+
+- Uploaded APK files
+- Rebuilt APK files
+- Signing keys
+- Signing passwords
+- Session data
+- Runtime logs
+- PID files
+- Environment secrets
+
+==================================================
+36. README
+==================================================
+
+Create a detailed README.md.
+
+Include:
+
+1. Project title
+2. Authorized-use warning
+3. Description
+4. Screens and main features
+5. Technology stack
+6. Architecture overview
+7. Complete directory structure
+8. Requirements
+9. Google AI Studio workflow
+10. GitHub push instructions
+11. GitHub Codespaces instructions
+12. Local Ubuntu setup
+13. Environment variables
+14. Setup script usage
+15. Run command
+16. Stop command
+17. Port information
+18. API endpoint summary
+19. APK processing pipeline
+20. Manifest scanner limitations
+21. Test signing-key explanation
+22. Security design
+23. Production hardening
+24. Troubleshooting
+25. Legal and ethical use notice
+
+Include these commands:
+
+chmod +x setup-codespace.sh run-dashboard.sh stop-dashboard.sh
+
+./setup-codespace.sh
+
+./run-dashboard.sh
+
+./stop-dashboard.sh
+
+Include Git commands:
+
+git init
+git add .
+git commit -m "Initial Android reverse engineering dashboard"
+git branch -M main
+git remote add origin YOUR_GITHUB_REPOSITORY_URL
+git push -u origin main
+
+Explain that Google AI Studio users can push or export the generated project to GitHub and then open the repository in GitHub Codespaces.
+
+Explain that ports 5173 and 8000 should normally remain Private.
+
+Explain that the backend should not be exposed directly to the public Internet without:
+
+- Authentication
+- Authorization
+- Rate limiting
+- HTTPS
+- Isolated containers
+- CPU limits
+- Memory limits
+- Disk quotas
+- Session cleanup
+- Malware scanning
+- Audit logging
+- Per-user storage isolation
+- No cloud credentials
+- No host Docker socket
+- No privileged container mode
+
+Troubleshooting must cover:
+
+- npm install failure
+- TypeScript build failure
+- apktool not found
+- jadx not found
+- Java not found
+- zipalign not found
+- apksigner not found
+- Test keystore missing
+- Codespaces port not opening
+- CORS errors
+- Upload fails
+- Upload stops on a large APK
+- APK validation fails
+- apktool decode failure
+- JADX partial failure
+- Manifest parse failure
+- File cannot be opened because it is binary
+- Rebuild failure
+- Signing failure
+- Permission denied when running shell scripts
+
+==================================================
+37. SECURITY REQUIREMENTS
+==================================================
+
+Implement all of the following:
+
+- Use child_process.spawn only.
+- Use shell: false.
+- Never use exec.
+- Never use execSync.
+- Never expose an arbitrary shell endpoint.
+- Never accept arbitrary CLI flags from users.
+- Never allow user-selected executable paths.
+- Use strict session ID validation.
+- Use safe filesystem path resolution.
+- Reject traversal attacks.
+- Reject unsafe symbolic links.
+- Enforce upload limits.
+- Enforce chunk limits.
+- Enforce text file limits.
+- Enforce command timeouts.
+- Limit command output.
+- Restrict CORS to configured frontend origin.
+- Use Helmet.
+- Use rate limiting.
+- Disable x-powered-by.
+- Do not expose stack traces in production.
+- Mask signing credentials from logs.
+- Do not return environment variables to the browser.
+- Do not commit signing credentials.
+- Treat APKs as untrusted.
+- Do not execute extracted scripts.
+- Do not render extracted file content as HTML.
+- Do not publicly serve the session directory.
+- Serve only explicitly requested validated files.
+- Do not provide directory listing through Express static middleware.
+- Use a disposable development key only.
+- Do not claim the application is safe for direct unrestricted public deployment.
+
+==================================================
+38. UX AND RESPONSIVENESS
+==================================================
+
+The completed interface must feel like a real developer tool.
+
+Requirements:
+
+- Smooth loading states
+- Professional spacing
+- Subtle transitions
+- Clear empty states
+- Clear error states
+- Responsive mobile drawers
+- Touch-friendly controls
+- Scrollable editor tabs
+- Independent explorer scrolling
+- Independent security panel scrolling
+- Editor occupies full available height
+- No page-level accidental horizontal overflow
+- Upload zone responsive on phones
+- Long filenames truncated visually but available through title or tooltip
+- Long manifest component names wrap safely
+- Status bar remains readable
+- Avoid excessive animations
+- Respect prefers-reduced-motion
+
+==================================================
+39. VALIDATION AND TESTING
+==================================================
+
+After generating the project:
+
+1. Confirm all imports are valid.
+2. Confirm every listed component exists.
+3. Confirm every API route is registered.
+4. Confirm frontend API methods match backend routes.
+5. Confirm request and response types match.
+6. Run npm install.
+7. Run npm run typecheck.
+8. Run npm run build.
+9. Fix all TypeScript errors.
+10. Fix all Vite build errors.
+11. Ensure shell scripts use valid Bash syntax.
+12. Ensure package-lock.json is created.
+13. Ensure no secret or test key is committed.
+14. Ensure no generated APK is committed.
+15. Ensure setup-codespace.sh is executable.
+16. Ensure run-dashboard.sh is executable.
+17. Ensure stop-dashboard.sh is executable.
+
+If external Android CLI tools are unavailable in the current Google AI Studio environment:
+
+- Still generate all integration code.
+- Do not fake successful CLI execution.
+- Clearly report missing tools through the health endpoint.
+- Explain that full APK processing must be tested in GitHub Codespaces or Ubuntu after setup-codespace.sh runs.
+
+==================================================
+40. GOOGLE AI STUDIO REQUIREMENTS
+==================================================
+
+This project is being created in Google AI Studio.
+
+Structure it so that:
+
+- The React frontend can preview in AI Studio.
+- The Node.js backend uses server-side runtime capabilities.
+- No secret is embedded in client-side code.
+- No Gemini API key is required for this application.
+- Do not add Gemini functionality unless explicitly required.
+- Do not add Firebase unless necessary.
+- Do not add a database unless necessary.
+- Use filesystem-based temporary sessions for this version.
+- The project can be pushed to GitHub.
+- The GitHub repository can be opened in Codespaces.
+- The Codespaces setup script can install external Android CLI tools.
+
+If AI Studio cannot execute apktool or JADX in its preview environment:
+
+- Keep the frontend fully previewable.
+- Make the backend health state clear.
+- Do not simulate completed decompilation.
+- Display “Required APK tools are unavailable in this preview environment.”
+- Ensure the same project works after being pushed to GitHub and opened in Codespaces.
+
+==================================================
+41. OUTPUT INSTRUCTIONS
+==================================================
+
+If you have project filesystem access:
+
+1. Create every directory and file directly.
+2. Write complete code into every file.
+3. Do not merely describe the files.
+4. Do not return partial snippets.
+5. Set executable file permissions where supported.
+6. Install dependencies if supported.
+7. Run type checking.
+8. Run the build.
+9. Fix errors.
+10. Present a concise final summary.
+
+The final summary must state:
+
+- Project name
+- Technology stack
+- Files and directories created
+- Validation performed
+- Any limitations of the AI Studio preview
+- How to push to GitHub
+- How to open and run in Codespaces
+
+If you do not have filesystem access:
+
+1. Print the complete directory tree.
+2. Print every file individually.
+3. Put the exact relative path before every code block.
+4. Never write “same as above”.
+5. Never replace code with ellipses.
+6. Do not omit configuration files.
+7. Do not omit shell scripts.
+8. Do not omit package.json files.
+9. Do not omit TypeScript configurations.
+10. Ensure every file can be copied directly.
+
+==================================================
+42. FINAL BEHAVIOR
+==================================================
+
+Do not ask for confirmation.
+
+Do not only create a visual mockup.
+
+Do not create a frontend with fake hardcoded results.
+
+Do not create buttons without backend functionality.
+
+Do not omit the backend.
+
+Do not switch the backend to Python.
+
+Do not expose secrets to the browser.
+
+Do not claim APK processing works when required CLI tools are absent.
+
+Start creating the complete React + TypeScript + Node.js + Express project now.
