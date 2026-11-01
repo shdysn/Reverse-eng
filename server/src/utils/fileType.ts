@@ -19,6 +19,19 @@ const TEXT_EXTENSIONS: Record<string, string> = {
   '.txt': 'plaintext',
   '.gradle': 'groovy',
   '.pro': 'plaintext',
+  '.svg': 'xml',
+};
+
+const IMAGE_MIME_TYPES: Record<string, string> = {
+  '.png': 'image/png',
+  '.9.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.bmp': 'image/bmp',
+  '.svg': 'image/svg+xml',
 };
 
 const BINARY_EXTENSIONS = new Set([
@@ -34,6 +47,7 @@ const BINARY_EXTENSIONS = new Set([
   '.gif',
   '.webp',
   '.ico',
+  '.bmp',
   '.pdf',
   '.zip',
   '.tar',
@@ -49,6 +63,20 @@ const BINARY_EXTENSIONS = new Set([
 export function getFileLanguage(filePath: string): string {
   const ext = path.extname(filePath).toLowerCase();
   return TEXT_EXTENSIONS[ext] || 'plaintext';
+}
+
+export function isImageFile(filePath: string): boolean {
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith('.9.png')) return true;
+  const ext = path.extname(lower);
+  return ext in IMAGE_MIME_TYPES;
+}
+
+export function getImageMimeType(filePath: string): string {
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith('.9.png')) return 'image/png';
+  const ext = path.extname(lower);
+  return IMAGE_MIME_TYPES[ext] || 'application/octet-stream';
 }
 
 export function isBinaryFile(filePath: string): boolean {

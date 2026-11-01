@@ -12,6 +12,7 @@ import {
   Layers,
   Sparkles,
   Search,
+  Image as ImageIcon,
 } from 'lucide-react';
 import type { TreeNode, FileTreeData } from '../types/index.js';
 
@@ -34,8 +35,11 @@ export const FileTree: React.FC<FileTreeProps> = ({
 }) => {
   const [filterText, setFilterText] = useState('');
 
-  const getFileIcon = (fileName: string) => {
+  const getFileIcon = (fileName: string, isImage?: boolean) => {
     const lower = fileName.toLowerCase();
+    if (isImage || /\.(png|jpg|jpeg|webp|gif|ico|bmp|svg)$/.test(lower)) {
+      return <ImageIcon className="w-4 h-4 text-[#a371f7] shrink-0" />;
+    }
     if (lower === 'androidmanifest.xml') {
       return <Layers className="w-4 h-4 text-[#58a6ff] shrink-0" />;
     }
@@ -130,11 +134,17 @@ export const FileTree: React.FC<FileTreeProps> = ({
         title={node.binary ? `${node.name} (Binary file - non-editable)` : node.path}
       >
         <div className="flex items-center gap-1.5 truncate">
-          {getFileIcon(node.name)}
+          {getFileIcon(node.name, node.isImage)}
           <span className="truncate">{node.name}</span>
         </div>
 
-        {node.binary && (
+        {node.isImage && (
+          <span className="text-[9px] uppercase px-1 py-0.2 bg-[#a371f7]/20 text-[#d2a8ff] border border-[#a371f7]/30 rounded shrink-0">
+            img
+          </span>
+        )}
+
+        {node.binary && !node.isImage && (
           <span className="flex items-center gap-0.5 text-[9px] uppercase px-1 py-0.2 bg-[#30363d] text-[#8b949e] rounded shrink-0">
             <Lock className="w-2.5 h-2.5" />
             bin

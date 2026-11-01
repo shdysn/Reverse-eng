@@ -1,5 +1,13 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { GoogleGenAI, Type } from '@google/genai';
-import { AiPatchRequest, AiPatchResponse } from '@android-re/shared';
+import {
+  AiPatchRequest,
+  AiPatchResponse,
+  AiProjectAnalyzeRequest,
+  AiProjectSolutionResponse,
+} from '@android-re/shared';
+import { sessionService } from './session.service.js';
 import { ApiError } from '../utils/apiError.js';
 
 export class AiService {
@@ -190,6 +198,225 @@ Perform the requested modification surgically. Ensure all callers and related co
     } catch (err) {
       if ((err as Error).name === 'ApiError') throw err;
       throw ApiError.internal(`AI Code Modification failed: ${(err as Error).message}`, 'AI_GEN_ERROR');
+    }
+  }
+
+  /**
+   * Analyzes the entire decompiled Android project (manifest, smali, and java files)
+   * to locate cross-file dependencies and generate multi-file coordinated solutions.
+   */
+  public async analyzeProject(req: AiProjectAnalyzeRequest): Promise<AiProjectSolutionResponse> {
+    const ai = this.getClient();
+    const sessionDir = sessionService.getSessionDir(req.sessionId);
+
+    // 1. Read AndroidManifest.xml
+    const manifestPath = path.join(sessionDir, 'decoded', 'AndroidManifest.xml');
+    let manifestContent = '';
+    try {
+      manifestContent = await fs.readFile(manifestPath, 'utf-8');
+      if (manifestContent.length > 50000) {
+        manifestContent = manifestContent.slice(0, 50000) + '\n<!-- ... truncated -->';
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2. Discover candidate files matching the user's intent keywords
+    const keywords = req.query
+      .toLowerCase()
+      .split(/[^a-z0-9_]+/)
+      .filter((w) => w.length >= 3 && !['the', 'and', 'with', 'for', 'this', 'that', 'all', 'how', 'can'].includes(w));
+
+    // Also include common security and hook keywords if query mentions bypass/root/ssl
+    if (req.query.toLowerCase().includes('root')) {
+      keywords.push('root', 'su', 'supersu', 'magisk', 'busybox', 'test-keys');
+    }
+    if (req.query.toLowerCase().includes('ssl') || req.query.toLowerCase().includes('cert')) {
+      keywords.push('trustmanager', 'certificatepinner', 'checkservertrusted', 'x509', 'hostnameverifier');
+    }
+
+    const candidateFiles: { relPath: string; content: string }[] = [];
+    const maxFilesToCollect = 6;
+    const maxTotalBytes = 150000;
+    let totalBytesCollected = 0;
+
+    const scanDirectory = async (dirPath: string, relPrefix = '') => {
+      if (candidateFiles.length >= maxFilesToCollect || totalBytesCollected >= maxTotalBytes) return;
+
+      let entries;
+      try {
+        entries = await fs.readdir(dirPath, { withFileTypes: true });
+      } catch {
+        return;
+      }
+
+      for (const entry of entries) {
+        if (candidateFiles.length >= maxFilesToCollect || totalBytesCollected >= maxTotalBytes) break;
+        if (entry.name === 'build' || entry.name === 'chunks' || entry.name.startsWith('.')) continue;
+
+        const fullPath = path.join(dirPath, entry.name);
+        const relPath = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
+
+        if (entry.isDirectory()) {
+          await scanDirectory(fullPath, relPath);
+        } else if (entry.isFile()) {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (ext === '.smali' || ext === '.java' || (ext === '.xml' && entry.name !== 'AndroidManifest.xml')) {
+            try {
+              const stat = await fs.stat(fullPath);
+              if (stat.size > 80000) continue; // skip oversized single files
+
+              const fileText = await fs.readFile(fullPath, 'utf-8');
+              const lowerText = fileText.toLowerCase();
+
+              const matches = keywords.some((kw) => lowerText.includes(kw));
+              if (matches || candidateFiles.length < 2) {
+                candidateFiles.push({ relPath, content: fileText });
+                totalBytesCollected += fileText.length;
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+    };
+
+    // Scan decoded/smali and java/
+    await scanDirectory(path.join(sessionDir, 'decoded', 'smali'), 'decoded/smali');
+    if (candidateFiles.length < maxFilesToCollect) {
+      await scanDirectory(path.join(sessionDir, 'java'), 'java');
+    }
+
+    const systemInstruction = `
+You are an elite Android application security architect and cross-file reverse engineer.
+The user wants to achieve a target across their ENTIRE decompiled Android project.
+You have access to AndroidManifest.xml and relevant source files across the project packages.
+
+YOUR GOAL:
+1. Conduct a holistic, project-wide architectural analysis. Locate the exact root cause or implementation across multiple files.
+2. Determine ALL files that need to be modified (e.g. Smali bytecode stubs, AndroidManifest.xml flags, network configs).
+3. For each affected file, provide the COMPLETE, pristine modified content.
+4. Strictly protect application stability:
+   - Use method stubbing / neutralization instead of deleting callers to avoid NoSuchMethodError.
+   - Maintain correct Smali registers and branch labels.
+5. Provide a clear summary and recommendation for reassembling the APK.
+`;
+
+    const userPrompt = `
+USER GOAL / QUERY ACROSS PROJECT:
+"${req.query}"
+
+=== ANDROID MANIFEST (decoded/AndroidManifest.xml) ===
+${manifestContent || '(Not available)'}
+
+=== PROJECT SOURCE CANDIDATE FILES (${candidateFiles.length} files scanned) ===
+${candidateFiles
+  .map(
+    (f, idx) => `
+--- File ${idx + 1}: ${f.relPath} ---
+\`\`\`
+${f.content}
+\`\`\`
+`
+  )
+  .join('\n')}
+
+Analyze the entire project architecture and return a coordinated, multi-file solution adhering to the JSON schema.
+`;
+
+    const targetModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+
+    const config = {
+      systemInstruction,
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          summary: {
+            type: Type.STRING,
+            description: 'Comprehensive high-level summary of how the solution works across the whole project.',
+          },
+          rootCause: {
+            type: Type.STRING,
+            description: 'Where the target behavior or checks are located in the project architecture.',
+          },
+          affectedFiles: {
+            type: Type.ARRAY,
+            description: 'List of files that must be modified to achieve the solution.',
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                filePath: {
+                  type: Type.STRING,
+                  description: 'Relative path of the file (e.g. decoded/AndroidManifest.xml or decoded/smali/com/app/Security.smali).',
+                },
+                fileName: {
+                  type: Type.STRING,
+                  description: 'File name (e.g. Security.smali).',
+                },
+                reason: {
+                  type: Type.STRING,
+                  description: 'Why this file must be modified.',
+                },
+                modifiedContent: {
+                  type: Type.STRING,
+                  description: 'The complete, production-ready modified content of the file.',
+                },
+                explanation: {
+                  type: Type.STRING,
+                  description: 'Explanation of changes made in this file.',
+                },
+              },
+              required: ['filePath', 'fileName', 'reason', 'modifiedContent', 'explanation'],
+            },
+          },
+          recommendation: {
+            type: Type.STRING,
+            description: 'Next steps for rebuilding and testing the project.',
+          },
+        },
+        required: ['summary', 'rootCause', 'affectedFiles', 'recommendation'],
+      },
+    };
+
+    try {
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: targetModel,
+          contents: userPrompt,
+          config,
+        });
+      } catch (err: any) {
+        if (err?.status === 404 || err?.message?.includes('404') || err?.message?.includes('not found')) {
+          console.warn(`Model ${targetModel} not found, retrying with gemini-3.1-flash-lite...`);
+          response = await ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite',
+            contents: userPrompt,
+            config,
+          });
+        } else {
+          throw err;
+        }
+      }
+
+      const jsonText = response.text;
+      if (!jsonText) {
+        throw new Error('Gemini API returned an empty response.');
+      }
+
+      const parsed = JSON.parse(jsonText);
+
+      return {
+        summary: parsed.summary || 'Project-wide analysis complete.',
+        rootCause: parsed.rootCause || 'Identified implementation across project source files.',
+        affectedFiles: Array.isArray(parsed.affectedFiles) ? parsed.affectedFiles : [],
+        recommendation: parsed.recommendation || 'Save modified files and rebuild APK.',
+      };
+    } catch (err) {
+      if ((err as Error).name === 'ApiError') throw err;
+      throw ApiError.internal(`Project-wide AI analysis failed: ${(err as Error).message}`, 'AI_PROJECT_ERROR');
     }
   }
 }

@@ -12,6 +12,11 @@ import type {
   RebuildData,
   AiPatchRequest,
   AiPatchResponse,
+  AiProjectAnalyzeRequest,
+  AiProjectSolutionResponse,
+  PackageNameInfo,
+  RenamePackageRequest,
+  RenamePackageResponse,
 } from '../types/index.js';
 
 class ApiService {
@@ -218,6 +223,55 @@ class ApiService {
   }
 
   /**
+   * Get download URL for decompiled source code ZIP
+   */
+  public getSourceDownloadUrl(sessionId: string): string {
+    return `${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/download-source`;
+  }
+
+  /**
+   * Get download URL for Android Studio Gradle Project ZIP
+   */
+  public getGradleDownloadUrl(sessionId: string): string {
+    return `${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/download-gradle`;
+  }
+
+  /**
+   * Get current package name & app info
+   */
+  public async getPackageInfo(sessionId: string): Promise<PackageNameInfo> {
+    const res = await fetch(
+      `${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/package-info`,
+      {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      }
+    );
+    return this.handleResponse<PackageNameInfo>(res);
+  }
+
+  /**
+   * Rename package name & app name across project
+   */
+  public async renamePackage(
+    sessionId: string,
+    payload: RenamePackageRequest
+  ): Promise<RenamePackageResponse> {
+    const res = await fetch(
+      `${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/rename-package`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+    return this.handleResponse<RenamePackageResponse>(res);
+  }
+
+  /**
    * Surgical AI Code Transformation
    */
   public async transformFileWithAi(params: AiPatchRequest): Promise<AiPatchResponse> {
@@ -230,6 +284,21 @@ class ApiService {
       body: JSON.stringify(params),
     });
     return this.handleResponse<AiPatchResponse>(res);
+  }
+
+  /**
+   * Project-Wide Multi-File AI Analysis
+   */
+  public async analyzeProjectWithAi(params: AiProjectAnalyzeRequest): Promise<AiProjectSolutionResponse> {
+    const res = await fetch(`${this.baseUrl}/api/ai/project-analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+    return this.handleResponse<AiProjectSolutionResponse>(res);
   }
 
   /**

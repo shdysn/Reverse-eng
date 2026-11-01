@@ -7,6 +7,7 @@ import { CodeWorkspace } from './components/CodeWorkspace.js';
 import { ManifestScanner } from './components/ManifestScanner.js';
 import { AiCopilotPanel } from './components/AiCopilotPanel.js';
 import { ApkUpload } from './components/ApkUpload.js';
+import { PackageNameModal } from './components/PackageNameModal.js';
 import { MobilePanels } from './components/MobilePanels.js';
 import { useSession } from './hooks/useSession.js';
 import { useEditorTabs } from './hooks/useEditorTabs.js';
@@ -20,7 +21,11 @@ import {
   Sparkles,
   ShieldAlert,
 } from 'lucide-react';
-import type { AiPatchResponse } from '@android-re/shared';
+import type {
+  AiPatchResponse,
+  AiProjectSolutionResponse,
+  AiProjectFileProposal,
+} from '@android-re/shared';
 
 export function App() {
   const {
@@ -52,8 +57,10 @@ export function App() {
   const [cursorPos, setCursorPos] = useState({ line: 1, column: 1 });
   const [rightPanelTab, setRightPanelTab] = useState<'ai' | 'security'>('ai');
   const [mobileAiOpen, setMobileAiOpen] = useState(false);
+  const [packageModalOpen, setPackageModalOpen] = useState(false);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [lastAiResult, setLastAiResult] = useState<AiPatchResponse | null>(null);
+  const [projectAiResult, setProjectAiResult] = useState<AiProjectSolutionResponse | null>(null);
 
   const {
     tabs,
@@ -126,6 +133,51 @@ export function App() {
     }
   };
 
+  const handleProjectAiTransform = async (query: string): Promise<AiProjectSolutionResponse | null> => {
+    if (!sessionId) {
+      addNotification('warning', 'No Active Project', 'Please upload an APK first to analyze project files.');
+      return null;
+    }
+
+    try {
+      setIsAiProcessing(true);
+      addNotification('info', 'Project AI Scan Active', 'Scanning Manifest, Smali, and Java across the entire project...');
+
+      const result = await api.analyzeProjectWithAi({
+        sessionId,
+        query,
+      });
+
+      setProjectAiResult(result);
+      addNotification(
+        'success',
+        'Project Solution Ready',
+        `Analyzed project architecture. Found ${result.affectedFiles.length} file(s) to patch.`
+      );
+
+      return result;
+    } catch (err) {
+      addNotification('error', 'Project Analysis Failed', (err as Error).message);
+      return null;
+    } finally {
+      setIsAiProcessing(false);
+    }
+  };
+
+  const handleApplyProjectFile = async (proposal: AiProjectFileProposal) => {
+    if (!sessionId) return;
+    try {
+      await api.saveFile(sessionId, proposal.filePath, proposal.modifiedContent);
+      // If currently open in editor, update active content
+      if (activeTab && activeTab.path === proposal.filePath) {
+        updateContent(proposal.modifiedContent);
+      }
+      addNotification('success', 'File Patched', `Applied project patch to ${proposal.fileName}`);
+    } catch (err) {
+      addNotification('error', 'Patch Failed', (err as Error).message);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0d1117] text-[#c9d1d9]">
       {/* Notifications Toast Overlay */}
@@ -171,7 +223,10 @@ export function App() {
         isSaving={isSaving}
         isRebuilding={isRebuilding}
         rebuildResult={rebuildResult}
+        sourceDownloadUrl={sessionId ? api.getSourceDownloadUrl(sessionId) : null}
+        gradleDownloadUrl={sessionId ? api.getGradleDownloadUrl(sessionId) : null}
         onOpenUpload={() => setUploadModalOpen(true)}
+        onOpenPackageModal={() => setPackageModalOpen(true)}
         onSaveFile={saveCurrentFile}
         onRescanManifest={() => {
           if (sessionId) loadManifest(sessionId);
@@ -264,11 +319,17 @@ export function App() {
             {rightPanelTab === 'ai' ? (
               <AiCopilotPanel
                 activeTab={activeTab}
+                sessionId={sessionId}
                 onApplyChanges={handleApplyAiChanges}
                 onTransform={handleAiTransform}
+                onProjectTransform={handleProjectAiTransform}
+                onApplyProjectFile={handleApplyProjectFile}
+                onOpenFile={openFile}
                 isProcessing={isAiProcessing}
                 lastAiResult={lastAiResult}
+                projectAiResult={projectAiResult}
                 onClearAiResult={() => setLastAiResult(null)}
+                onClearProjectAiResult={() => setProjectAiResult(null)}
               />
             ) : (
               <ManifestScanner
@@ -298,6 +359,30 @@ export function App() {
         }}
       />
 
+      {/* Package Name Editor & App Cloner Modal */}
+      <PackageNameModal
+        isOpen={packageModalOpen}
+        sessionId={sessionId}
+        onClose={() => setPackageModalOpen(false)}
+        onSuccess={(res) => {
+          addNotification(
+            'success',
+            'Package Name Updated',
+            `Renamed ${res.oldPackageName} → ${res.newPackageName} across ${res.updatedFilesCount} files.`
+          );
+          if (sessionId) {
+            loadManifest(sessionId);
+          }
+          // If AndroidManifest.xml is currently open, reload its content
+          if (activeTab && activeTab.path === 'decoded/AndroidManifest.xml' && sessionId) {
+            api
+              .readFile(sessionId, 'decoded/AndroidManifest.xml')
+              .then((data) => updateContent(data.content))
+              .catch(() => {});
+          }
+        }}
+      />
+
       {/* Responsive Mobile Drawers */}
       <MobilePanels
         explorerOpen={mobileExplorerOpen}
@@ -317,12 +402,17 @@ export function App() {
         onRescanManifest={() => {
           if (sessionId) loadManifest(sessionId);
         }}
+        sessionId={sessionId}
         activeTab={activeTab}
         onApplyChanges={handleApplyAiChanges}
         onTransform={handleAiTransform}
+        onProjectTransform={handleProjectAiTransform}
+        onApplyProjectFile={handleApplyProjectFile}
         isAiProcessing={isAiProcessing}
         lastAiResult={lastAiResult}
+        projectAiResult={projectAiResult}
         onClearAiResult={() => setLastAiResult(null)}
+        onClearProjectAiResult={() => setProjectAiResult(null)}
       />
     </div>
   );

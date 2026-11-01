@@ -10,6 +10,8 @@ export interface EditorTab {
   isDirty: boolean;
   editable: boolean;
   size: number;
+  isImage?: boolean;
+  mimeType?: string;
 }
 
 export interface NotificationItem {

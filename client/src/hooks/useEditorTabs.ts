@@ -39,6 +39,8 @@ export function useEditorTabs(
           isDirty: false,
           editable: data.editable,
           size: data.size,
+          isImage: data.isImage,
+          mimeType: data.mimeType,
         };
 
         setTabs((prev) => [...prev, newTab]);

@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import type { TreeNode, FileTreeData, FileData, FileWriteData } from '../types/index.js';
 import { sessionService } from './session.service.js';
 import { resolveSafePath } from '../utils/safePath.js';
-import { getFileLanguage, isBinaryFile } from '../utils/fileType.js';
+import { getFileLanguage, isBinaryFile, isImageFile, getImageMimeType } from '../utils/fileType.js';
 import { ApiError } from '../utils/apiError.js';
 import { env } from '../config/env.js';
 
@@ -73,11 +73,12 @@ export class FileService {
           }
 
           const ext = path.extname(entry.name);
-          const binary = isBinaryFile(entry.name);
+          const isImg = isImageFile(entry.name);
+          const binary = isBinaryFile(entry.name) && !isImg;
           const oversized = size > env.MAX_TEXT_BYTES;
           const firstSegment = relPath.split('/')[0];
           const isUnderWritableDir = firstSegment === 'decoded' || firstSegment === 'java';
-          const editable = !binary && !oversized && isUnderWritableDir;
+          const editable = !binary && !isImg && !oversized && isUnderWritableDir;
 
           files.push({
             name: entry.name,
@@ -87,6 +88,7 @@ export class FileService {
             extension: ext,
             editable,
             binary,
+            isImage: isImg,
           });
         }
       }
@@ -109,7 +111,7 @@ export class FileService {
   }
 
   /**
-   * Reads a text file safely from the session workspace
+   * Reads a text or image file safely from the session workspace
    */
   public async readFile(sessionId: string, relativePath: string): Promise<FileData> {
     const sessionDir = sessionService.getSessionDir(sessionId);
@@ -118,6 +120,28 @@ export class FileService {
     const stat = await fs.stat(targetPath);
     if (stat.isDirectory()) {
       throw ApiError.badRequest('Target path is a directory, not a file', 'IS_DIRECTORY');
+    }
+
+    if (stat.size > env.MAX_TEXT_BYTES * 5) {
+      throw ApiError.payloadTooLarge(
+        `File size (${stat.size} bytes) exceeds maximum preview limit`,
+        'FILE_TOO_LARGE'
+      );
+    }
+
+    if (isImageFile(targetPath) && !targetPath.toLowerCase().endsWith('.svg')) {
+      const buffer = await fs.readFile(targetPath);
+      const mimeType = getImageMimeType(targetPath);
+      const dataUri = `data:${mimeType};base64,${buffer.toString('base64')}`;
+      return {
+        path: safeRel,
+        content: dataUri,
+        language: 'image',
+        editable: false,
+        size: stat.size,
+        isImage: true,
+        mimeType,
+      };
     }
 
     if (stat.size > env.MAX_TEXT_BYTES) {
@@ -135,6 +159,7 @@ export class FileService {
     const language = getFileLanguage(targetPath);
     const firstSegment = safeRel.split('/')[0];
     const editable = firstSegment === 'decoded' || firstSegment === 'java';
+    const isSvg = targetPath.toLowerCase().endsWith('.svg');
 
     return {
       path: safeRel,
@@ -142,6 +167,8 @@ export class FileService {
       language,
       editable,
       size: stat.size,
+      isImage: isSvg,
+      mimeType: isSvg ? 'image/svg+xml' : undefined,
     };
   }
 

@@ -22,12 +22,17 @@ interface MobilePanelsProps {
   manifestData: ManifestScanData | null;
   manifestLoading: boolean;
   onRescanManifest: () => void;
+  sessionId: string | null;
   activeTab: EditorTab | null;
   onApplyChanges: (newContent: string) => void;
   onTransform: (instruction: string, selectedSnippet?: string) => Promise<AiPatchResponse | null>;
+  onProjectTransform?: (query: string) => Promise<any>;
+  onApplyProjectFile?: (proposal: any) => Promise<void>;
   isAiProcessing: boolean;
   lastAiResult: AiPatchResponse | null;
+  projectAiResult?: any;
   onClearAiResult: () => void;
+  onClearProjectAiResult?: () => void;
 }
 
 export const MobilePanels: React.FC<MobilePanelsProps> = ({
@@ -46,12 +51,17 @@ export const MobilePanels: React.FC<MobilePanelsProps> = ({
   manifestData,
   manifestLoading,
   onRescanManifest,
+  sessionId,
   activeTab,
   onApplyChanges,
   onTransform,
+  onProjectTransform,
+  onApplyProjectFile,
   isAiProcessing,
   lastAiResult,
+  projectAiResult,
   onClearAiResult,
+  onClearProjectAiResult,
 }) => {
   if (!explorerOpen && !securityOpen && !aiOpen) return null;
 
@@ -144,11 +154,17 @@ export const MobilePanels: React.FC<MobilePanelsProps> = ({
           <div className="flex-1 overflow-hidden">
             <AiCopilotPanel
               activeTab={activeTab}
+              sessionId={sessionId}
               onApplyChanges={onApplyChanges}
               onTransform={onTransform}
+              onProjectTransform={onProjectTransform}
+              onApplyProjectFile={onApplyProjectFile}
+              onOpenFile={onOpenFile}
               isProcessing={isAiProcessing}
               lastAiResult={lastAiResult}
+              projectAiResult={projectAiResult}
               onClearAiResult={onClearAiResult}
+              onClearProjectAiResult={onClearProjectAiResult}
             />
           </div>
         </div>

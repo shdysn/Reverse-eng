@@ -11,6 +11,9 @@ import {
   RotateCcw,
   ShieldCheck,
   Sparkles,
+  FolderArchive,
+  Package,
+  FileBox,
 } from 'lucide-react';
 import type { RebuildData } from '../types/index.js';
 
@@ -20,7 +23,10 @@ interface ToolbarProps {
   isSaving: boolean;
   isRebuilding: boolean;
   rebuildResult: RebuildData | null;
+  sourceDownloadUrl?: string | null;
+  gradleDownloadUrl?: string | null;
   onOpenUpload: () => void;
+  onOpenPackageModal?: () => void;
   onSaveFile: () => void;
   onRescanManifest: () => void;
   onRebuild: () => void;
@@ -37,7 +43,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   isSaving,
   isRebuilding,
   rebuildResult,
+  sourceDownloadUrl,
+  gradleDownloadUrl,
   onOpenUpload,
+  onOpenPackageModal,
   onSaveFile,
   onRescanManifest,
   onRebuild,
@@ -164,6 +173,45 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <Hammer className={`w-3.5 h-3.5 ${isRebuilding ? 'animate-spin' : ''}`} />
           <span className="hidden sm:inline">{isRebuilding ? 'Rebuilding...' : 'Rebuild APK'}</span>
         </button>
+
+        {/* Package Name Editor / Cloner */}
+        {hasSession && onOpenPackageModal && (
+          <button
+            type="button"
+            onClick={onOpenPackageModal}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#21262d] hover:bg-[#30363d] border border-[#a371f7]/40 text-[#d2a8ff] hover:text-white rounded text-xs font-medium transition-all shadow-sm active:scale-95"
+            title="Package Name Editor & App Cloner"
+          >
+            <Package className="w-3.5 h-3.5 text-[#a371f7]" />
+            <span className="hidden xl:inline">Package ID</span>
+          </button>
+        )}
+
+        {/* Download Source Code ZIP */}
+        {hasSession && sourceDownloadUrl && (
+          <a
+            href={sourceDownloadUrl}
+            download="source-code.zip"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#21262d] hover:bg-[#30363d] border border-[#58a6ff]/40 text-[#58a6ff] hover:text-white rounded text-xs font-medium transition-all shadow-sm active:scale-95"
+            title="Download full decompiled Java & XML source code as ZIP"
+          >
+            <FolderArchive className="w-3.5 h-3.5 text-[#58a6ff]" />
+            <span className="hidden lg:inline">Source (ZIP)</span>
+          </a>
+        )}
+
+        {/* Download Android Studio Gradle Project ZIP */}
+        {hasSession && gradleDownloadUrl && (
+          <a
+            href={gradleDownloadUrl}
+            download="android-studio-gradle-project.zip"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#21262d] hover:bg-[#30363d] border border-[#3fb950]/40 text-[#3fb950] hover:text-white rounded text-xs font-medium transition-all shadow-sm active:scale-95"
+            title="Generate & Download ready-to-open Android Studio Gradle Project (ZIP)"
+          >
+            <FileBox className="w-3.5 h-3.5 text-[#3fb950]" />
+            <span className="hidden lg:inline">Gradle Project</span>
+          </a>
+        )}
 
         {/* Download Signed APK */}
         {rebuildResult && (

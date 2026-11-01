@@ -37,3 +37,27 @@ aiRouter.post(
     res.json(response);
   })
 );
+
+const projectAnalyzeSchema = z.object({
+  sessionId: z.string().min(1, 'sessionId is required'),
+  query: z.string().min(3, 'Query must be at least 3 characters long'),
+});
+
+aiRouter.post(
+  '/project-analyze',
+  asyncHandler(async (req, res) => {
+    const parseResult = projectAnalyzeSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      throw ApiError.badRequest(
+        `Invalid request: ${parseResult.error.errors.map((e) => e.message).join(', ')}`,
+        'INVALID_PROJECT_AI_REQUEST'
+      );
+    }
+
+    const result = await aiService.analyzeProject(parseResult.data);
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);

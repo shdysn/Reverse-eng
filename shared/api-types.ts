@@ -95,6 +95,7 @@ export interface TreeNode {
   extension?: string;
   editable?: boolean;
   binary?: boolean;
+  isImage?: boolean;
   children?: TreeNode[];
 }
 
@@ -114,6 +115,8 @@ export interface FileData {
   language: string;
   editable: boolean;
   size: number;
+  isImage?: boolean;
+  mimeType?: string;
 }
 
 export interface FileWriteRequest {
@@ -211,4 +214,51 @@ export interface AiPatchResponse {
   actions: AiPatchAction[];
   integrityVerified: boolean;
   safetyNote: string;
+}
+
+/**
+ * Project-Wide Multi-File AI Analysis
+ */
+export interface AiProjectAnalyzeRequest {
+  sessionId: string;
+  query: string;
+}
+
+export interface AiProjectFileProposal {
+  filePath: string;
+  fileName: string;
+  reason: string;
+  modifiedContent: string;
+  explanation: string;
+}
+
+export interface AiProjectSolutionResponse {
+  summary: string;
+  rootCause: string;
+  affectedFiles: AiProjectFileProposal[];
+  recommendation: string;
+}
+
+/**
+ * Package Name Editor / App Cloner
+ */
+export interface PackageNameInfo {
+  packageName: string;
+  appName?: string;
+  versionName?: string;
+  versionCode?: string;
+}
+
+export interface RenamePackageRequest {
+  newPackageName: string;
+  newAppName?: string;
+  deepRefactorSmali?: boolean;
+}
+
+export interface RenamePackageResponse {
+  oldPackageName: string;
+  newPackageName: string;
+  newAppName?: string;
+  updatedFilesCount: number;
+  updatedFiles: string[];
 }

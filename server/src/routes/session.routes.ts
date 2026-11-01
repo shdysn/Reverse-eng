@@ -6,7 +6,15 @@ import { sessionService } from '../services/session.service.js';
 import { fileService } from '../services/file.service.js';
 import { manifestService } from '../services/manifest.service.js';
 import { rebuildService } from '../services/rebuild.service.js';
+import { packageService } from '../services/package.service.js';
+import { gradleService } from '../services/gradle.service.js';
+import { ApiError } from '../utils/apiError.js';
+import path from 'node:path';
+import fsSync from 'node:fs';
+import * as archiverModule from 'archiver';
 import type { ApiResponse } from '../types/index.js';
+
+const archiver: any = (archiverModule as any).default || archiverModule;
 
 export const sessionRouter = Router();
 
@@ -94,6 +102,105 @@ sessionRouter.get(
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
 
     res.sendFile(filePath);
+  })
+);
+
+// GET /api/sessions/:sessionId/download-source - Download Java & Decompiled Source Code ZIP
+sessionRouter.get(
+  '/:sessionId/download-source',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.params;
+    const session = await sessionService.getSession(sessionId);
+    if (!session) {
+      throw ApiError.notFound('Session not found', 'SESSION_NOT_FOUND');
+    }
+    const sessionDir = sessionService.getSessionDir(sessionId);
+
+    const baseName = session.originalFilename
+      ? session.originalFilename.replace(/\.apk$/i, '')
+      : 'android-app';
+    const zipName = `${baseName}-source-code.zip`;
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
+    const archive = archiver('zip', {
+      zlib: { level: 6 },
+    });
+
+    archive.on('error', (err: any) => {
+      console.error('ZIP archive error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: { message: err.message } });
+      }
+    });
+
+    archive.pipe(res);
+
+    // 1. Add Java source code (from JADX) if present
+    const javaDir = path.join(sessionDir, 'java');
+    if (fsSync.existsSync(javaDir)) {
+      archive.directory(javaDir, 'java-src');
+    }
+
+    // 2. Add decoded resources, manifest, and smali if present
+    const decodedDir = path.join(sessionDir, 'decoded');
+    if (fsSync.existsSync(decodedDir)) {
+      archive.directory(decodedDir, 'decompiled');
+    }
+
+    await archive.finalize();
+  })
+);
+
+// GET /api/sessions/:sessionId/download-gradle - Download Android Studio Gradle Project ZIP
+sessionRouter.get(
+  '/:sessionId/download-gradle',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    await gradleService.streamGradleProjectZip(req.params.sessionId, res);
+  })
+);
+
+// GET /api/sessions/:sessionId/package-info - Get current package name and app metadata
+sessionRouter.get(
+  '/:sessionId/package-info',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const info = await packageService.getPackageInfo(req.params.sessionId);
+    res.json({
+      success: true,
+      data: info,
+    });
+  })
+);
+
+const renamePackageSchema = z.object({
+  newPackageName: z.string().min(3, 'Package name is required'),
+  newAppName: z.string().optional(),
+  deepRefactorSmali: z.boolean().optional(),
+});
+
+// POST /api/sessions/:sessionId/rename-package - Rename package across Manifest, apktool.yml, and optional Smali
+sessionRouter.post(
+  '/:sessionId/rename-package',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const parsed = renamePackageSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw ApiError.badRequest(
+        `Invalid package rename payload: ${parsed.error.errors.map((e) => e.message).join(', ')}`,
+        'INVALID_PACKAGE_RENAME'
+      );
+    }
+
+    const result = await packageService.renamePackage(req.params.sessionId, parsed.data);
+    res.json({
+      success: true,
+      data: result,
+    });
   })
 );
 
