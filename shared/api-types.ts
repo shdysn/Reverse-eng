@@ -184,3 +184,31 @@ export interface RebuildData {
   verified: boolean;
   logs?: string[];
 }
+
+/**
+ * AI Copilot & Surgical Patcher
+ */
+export interface AiPatchRequest {
+  filePath: string;
+  fileName: string;
+  content: string;
+  instruction: string;
+  selectedSnippet?: string;
+  fileType?: 'smali' | 'xml' | 'java' | 'other';
+}
+
+export interface AiPatchAction {
+  target: string;
+  changeType: 'removed' | 'added' | 'modified' | 'neutralized';
+  description: string;
+  impactOnDependencies: string;
+}
+
+export interface AiPatchResponse {
+  originalContent: string;
+  modifiedContent: string;
+  explanation: string;
+  actions: AiPatchAction[];
+  integrityVerified: boolean;
+  safetyNote: string;
+}

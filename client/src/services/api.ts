@@ -10,6 +10,8 @@ import type {
   FileWriteData,
   ManifestScanData,
   RebuildData,
+  AiPatchRequest,
+  AiPatchResponse,
 } from '../types/index.js';
 
 class ApiService {
@@ -213,6 +215,21 @@ class ApiService {
    */
   public getDownloadUrl(sessionId: string): string {
     return `${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/download`;
+  }
+
+  /**
+   * Surgical AI Code Transformation
+   */
+  public async transformFileWithAi(params: AiPatchRequest): Promise<AiPatchResponse> {
+    const res = await fetch(`${this.baseUrl}/api/ai/transform`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+    return this.handleResponse<AiPatchResponse>(res);
   }
 
   /**

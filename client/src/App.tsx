@@ -5,11 +5,22 @@ import { FileTree } from './components/FileTree.js';
 import { EditorTabs } from './components/EditorTabs.js';
 import { CodeWorkspace } from './components/CodeWorkspace.js';
 import { ManifestScanner } from './components/ManifestScanner.js';
+import { AiCopilotPanel } from './components/AiCopilotPanel.js';
 import { ApkUpload } from './components/ApkUpload.js';
 import { MobilePanels } from './components/MobilePanels.js';
 import { useSession } from './hooks/useSession.js';
 import { useEditorTabs } from './hooks/useEditorTabs.js';
-import { X, AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
+import { api } from './services/api.js';
+import {
+  X,
+  AlertCircle,
+  CheckCircle,
+  Info,
+  AlertTriangle,
+  Sparkles,
+  ShieldAlert,
+} from 'lucide-react';
+import type { AiPatchResponse } from '@android-re/shared';
 
 export function App() {
   const {
@@ -39,6 +50,10 @@ export function App() {
   } = useSession();
 
   const [cursorPos, setCursorPos] = useState({ line: 1, column: 1 });
+  const [rightPanelTab, setRightPanelTab] = useState<'ai' | 'security'>('ai');
+  const [mobileAiOpen, setMobileAiOpen] = useState(false);
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const [lastAiResult, setLastAiResult] = useState<AiPatchResponse | null>(null);
 
   const {
     tabs,
@@ -56,6 +71,60 @@ export function App() {
   } = useEditorTabs(sessionId, addNotification, () => {
     if (sessionId) loadManifest(sessionId);
   });
+
+  const handleAiTransform = async (instruction: string, selectedSnippet?: string): Promise<AiPatchResponse | null> => {
+    if (!activeTab) {
+      addNotification('warning', 'No File Selected', 'Please open a file in the editor to modify.');
+      return null;
+    }
+
+    const fileType = activeTab.name.endsWith('.smali')
+      ? 'smali'
+      : activeTab.name.endsWith('.xml')
+      ? 'xml'
+      : activeTab.name.endsWith('.java')
+      ? 'java'
+      : 'other';
+
+    try {
+      setIsAiProcessing(true);
+      addNotification('info', 'AI Copilot Active', 'Analyzing dependencies and generating surgical patch...');
+
+      const result = await api.transformFileWithAi({
+        filePath: activeTab.path,
+        fileName: activeTab.name,
+        content: activeTab.content,
+        instruction,
+        selectedSnippet,
+        fileType,
+      });
+
+      setLastAiResult(result);
+      // Immediately reflect live modification in the Monaco editor
+      updateContent(result.modifiedContent);
+
+      addNotification(
+        'success',
+        'AI Patch Ready',
+        'Surgical modifications applied in editor. Review the audit report below.'
+      );
+
+      return result;
+    } catch (err) {
+      addNotification('error', 'AI Modification Failed', (err as Error).message);
+      return null;
+    } finally {
+      setIsAiProcessing(false);
+    }
+  };
+
+  const handleApplyAiChanges = (newContent: string) => {
+    if (activeTab) {
+      updateContent(newContent);
+      saveCurrentFile();
+      addNotification('success', 'Changes Saved', `Applied and saved AI modifications to ${activeTab.name}`);
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0d1117] text-[#c9d1d9]">
@@ -111,6 +180,11 @@ export function App() {
         onResetWorkspace={resetWorkspace}
         onToggleMobileExplorer={() => setMobileExplorerOpen((prev) => !prev)}
         onToggleMobileSecurity={() => setMobileSecurityOpen((prev) => !prev)}
+        onToggleAiCopilot={() => {
+          setMobileAiOpen((prev) => !prev);
+          setRightPanelTab('ai');
+        }}
+        aiCopilotOpen={rightPanelTab === 'ai' || mobileAiOpen}
       />
 
       {/* Main Workspace Layout */}
@@ -146,15 +220,66 @@ export function App() {
           />
         </section>
 
-        {/* Right: Desktop Security Scanner Panel (~320px) */}
-        <aside className="hidden lg:flex w-[320px] shrink-0 h-full">
-          <ManifestScanner
-            scanData={manifestData}
-            isLoading={manifestLoading}
-            onRescan={() => {
-              if (sessionId) loadManifest(sessionId);
-            }}
-          />
+        {/* Right: Desktop Tabbed Panel (~340px) - AI Copilot & Security Scanner */}
+        <aside className="hidden lg:flex w-[340px] shrink-0 h-full flex-col bg-[#0d1117] border-l border-[#30363d]">
+          {/* Panel Selector Tabs */}
+          <div className="h-10 bg-[#161b22] border-b border-[#30363d] px-2 flex items-center gap-1 shrink-0 select-none">
+            <button
+              type="button"
+              onClick={() => setRightPanelTab('ai')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1 px-2 rounded text-xs font-semibold transition-all ${
+                rightPanelTab === 'ai'
+                  ? 'bg-[#21262d] text-white shadow-xs border border-[#30363d]'
+                  : 'text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#21262d]/50'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#e3b341]" />
+              <span>AI Copilot</span>
+              <span className="text-[9px] px-1 rounded bg-[#238636]/30 text-[#3fb950] font-mono">
+                Gemini
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setRightPanelTab('security')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1 px-2 rounded text-xs font-semibold transition-all ${
+                rightPanelTab === 'security'
+                  ? 'bg-[#21262d] text-white shadow-xs border border-[#30363d]'
+                  : 'text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#21262d]/50'
+              }`}
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-[#f85149]" />
+              <span>Security</span>
+              {manifestData && manifestData.summary.critical + manifestData.summary.high > 0 && (
+                <span className="text-[9px] px-1 rounded bg-[#f85149]/20 text-[#ff7b72] font-mono">
+                  {manifestData.summary.critical + manifestData.summary.high}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Panel Body */}
+          <div className="flex-1 overflow-hidden">
+            {rightPanelTab === 'ai' ? (
+              <AiCopilotPanel
+                activeTab={activeTab}
+                onApplyChanges={handleApplyAiChanges}
+                onTransform={handleAiTransform}
+                isProcessing={isAiProcessing}
+                lastAiResult={lastAiResult}
+                onClearAiResult={() => setLastAiResult(null)}
+              />
+            ) : (
+              <ManifestScanner
+                scanData={manifestData}
+                isLoading={manifestLoading}
+                onRescan={() => {
+                  if (sessionId) loadManifest(sessionId);
+                }}
+              />
+            )}
+          </div>
         </aside>
       </main>
 
@@ -177,8 +302,10 @@ export function App() {
       <MobilePanels
         explorerOpen={mobileExplorerOpen}
         securityOpen={mobileSecurityOpen}
+        aiOpen={mobileAiOpen}
         onCloseExplorer={() => setMobileExplorerOpen(false)}
         onCloseSecurity={() => setMobileSecurityOpen(false)}
+        onCloseAi={() => setMobileAiOpen(false)}
         treeData={treeData}
         treeLoading={treeLoading}
         activePath={activeTab?.path || null}
@@ -190,6 +317,12 @@ export function App() {
         onRescanManifest={() => {
           if (sessionId) loadManifest(sessionId);
         }}
+        activeTab={activeTab}
+        onApplyChanges={handleApplyAiChanges}
+        onTransform={handleAiTransform}
+        isAiProcessing={isAiProcessing}
+        lastAiResult={lastAiResult}
+        onClearAiResult={() => setLastAiResult(null)}
       />
     </div>
   );

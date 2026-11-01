@@ -10,6 +10,7 @@ import {
   Terminal,
   RotateCcw,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 import type { RebuildData } from '../types/index.js';
 
@@ -26,6 +27,8 @@ interface ToolbarProps {
   onResetWorkspace: () => void;
   onToggleMobileExplorer: () => void;
   onToggleMobileSecurity: () => void;
+  onToggleAiCopilot?: () => void;
+  aiCopilotOpen?: boolean;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -41,6 +44,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onResetWorkspace,
   onToggleMobileExplorer,
   onToggleMobileSecurity,
+  onToggleAiCopilot,
+  aiCopilotOpen = false,
 }) => {
   return (
     <header className="h-14 bg-[#161b22] border-b border-[#30363d] px-3 flex items-center justify-between select-none shrink-0 z-20">
@@ -127,6 +132,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         >
           <RefreshCw className="w-3.5 h-3.5 text-[#d29922]" />
           <span className="hidden md:inline">Rescan Manifest</span>
+        </button>
+
+        {/* AI Copilot Toggle */}
+        <button
+          type="button"
+          onClick={onToggleAiCopilot}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded border text-xs font-medium transition-all shadow-sm active:scale-95 ${
+            aiCopilotOpen
+              ? 'bg-gradient-to-r from-[#238636] to-[#2f81f7] text-white border-transparent'
+              : 'bg-[#21262d] hover:bg-[#30363d] border-[#30363d] text-[#c9d1d9] hover:text-white'
+          }`}
+          title="Toggle Gemini AI Bytecode Copilot (Surgical Patcher)"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-[#e3b341]" />
+          <span className="hidden sm:inline">AI Copilot</span>
         </button>
 
         {/* Rebuild APK */}

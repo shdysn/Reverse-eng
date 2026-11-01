@@ -10,6 +10,7 @@ import { uploadRouter } from './routes/upload.routes.js';
 import { sessionRouter } from './routes/session.routes.js';
 import { scanRouter } from './routes/scan.routes.js';
 import { rebuildRouter } from './routes/rebuild.routes.js';
+import { aiRouter } from './routes/ai.routes.js';
 
 export function createApp(): express.Application {
   const app = express();
@@ -92,6 +93,7 @@ export function createApp(): express.Application {
   app.use('/api/sessions', sessionRouter);
   app.use('/api/sessions', scanRouter);
   app.use('/api/sessions', rebuildRouter);
+  app.use('/api/ai', aiRouter);
 
   // Not Found API handler
   app.use('/api', notFoundHandler);
