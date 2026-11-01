@@ -14,6 +14,9 @@ import { rebuildRouter } from './routes/rebuild.routes.js';
 export function createApp(): express.Application {
   const app = express();
 
+  // Trust reverse proxy (e.g. Cloud Run, GitHub Codespaces, reverse proxies)
+  app.set('trust proxy', 1);
+
   // Security headers & disable x-powered-by
   app.disable('x-powered-by');
   app.use(
@@ -63,6 +66,7 @@ export function createApp(): express.Application {
     max: 500,
     standardHeaders: true,
     legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
     message: {
       success: false,
       error: {

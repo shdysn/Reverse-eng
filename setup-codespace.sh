@@ -146,7 +146,9 @@ TEST_KEY_PASSWORD=androiddevtestkey123
 EOF
 
 cat <<EOF > client/.env
-VITE_API_URL=${SERVER_ORIGIN}
+# Left empty so the frontend uses Vite's internal proxy to localhost:8000
+# This eliminates cross-origin port exposure issues in Codespaces and browsers.
+VITE_API_URL=
 EOF
 
 # 18. Set executable permissions
