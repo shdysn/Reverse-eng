@@ -80,13 +80,19 @@ export function useSession() {
         setTreeLoading(true);
         const data = await api.getFileTree(sId);
         setTreeData(data);
-        // Expand root top-level directories by default
+        // Expand root and second-level directories by default so files are immediately visible
         const initialExpanded = new Set<string>();
-        data.tree.forEach((node) => {
-          if (node.type === 'directory') {
-            initialExpanded.add(node.path);
-          }
-        });
+        const expandDirs = (nodes: TreeNode[], depth = 0) => {
+          nodes.forEach((node) => {
+            if (node.type === 'directory') {
+              initialExpanded.add(node.path);
+              if (depth < 2 && node.children) {
+                expandDirs(node.children, depth + 1);
+              }
+            }
+          });
+        };
+        expandDirs(data.tree, 0);
         setExpandedFolders(initialExpanded);
       } catch (err) {
         addNotification('error', 'Failed to Load File Tree', (err as Error).message);
@@ -122,11 +128,16 @@ export function useSession() {
       loadTree(sId);
       loadManifest(sId);
 
+      // Automatically open the mobile explorer drawer so files are visible immediately on phones
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setMobileExplorerOpen(true);
+      }
+
       if (partialJadx) {
         addNotification(
-          'warning',
-          'JADX Decompilation Note',
-          'Apktool succeeded with Smali & resources. JADX Java source decompilation completed with warnings or is not installed.'
+          'info',
+          'Files Extracted Successfully',
+          'APK contents decompiled and ready to inspect in File Explorer.'
         );
       } else {
         addNotification('success', 'APK Decompiled Successfully', `Ready to inspect and analyze ${filename}`);

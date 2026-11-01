@@ -16,11 +16,18 @@ class ApiService {
   private baseUrl: string;
 
   constructor() {
+    // In browser environments (including GitHub Codespaces *.app.github.dev),
+    // always use relative URL so requests hit same-origin /api and route through Vite's local proxy.
+    // This completely eliminates cross-origin port 8000 cookie/privacy block in mobile browsers.
+    if (typeof window !== 'undefined') {
+      this.baseUrl = '';
+      return;
+    }
+
     const envUrl = (import.meta as unknown as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL;
     if (envUrl && envUrl.trim() !== '') {
       this.baseUrl = envUrl.replace(/\/+$/, '');
     } else {
-      // In same-host or proxied setups (e.g. AI Studio dev server or Vite proxy), use relative origin
       this.baseUrl = '';
     }
   }

@@ -165,7 +165,12 @@ export function App() {
       <ApkUpload
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
-        onSuccess={activateSession}
+        onSuccess={(sId, filename, partialJadx) => {
+          activateSession(sId, filename, partialJadx);
+          setTimeout(() => {
+            openFile('decoded/AndroidManifest.xml', 'AndroidManifest.xml').catch(() => {});
+          }, 300);
+        }}
       />
 
       {/* Responsive Mobile Drawers */}

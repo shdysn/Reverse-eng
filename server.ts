@@ -7,7 +7,20 @@ import { sessionService } from './server/src/services/session.service.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+// Support port from CLI arguments (e.g. --port 3000) or PORT env var
+let parsedPort = 3000;
+const portArgIndex = process.argv.findIndex((arg) => arg === '--port');
+if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+  parsedPort = parseInt(process.argv[portArgIndex + 1], 10);
+} else {
+  const portArg = process.argv.find((arg) => arg.startsWith('--port='));
+  if (portArg) {
+    parsedPort = parseInt(portArg.split('=')[1], 10);
+  } else if (process.env.PORT) {
+    parsedPort = parseInt(process.env.PORT, 10);
+  }
+}
+const PORT = !isNaN(parsedPort) ? parsedPort : 3000;
 const HOST = '0.0.0.0';
 
 async function start() {

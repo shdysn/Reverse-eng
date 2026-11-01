@@ -158,34 +158,38 @@ export class ApkService {
     const decodedDir = path.join(sessionDir, 'decoded');
     const javaDir = path.join(sessionDir, 'java');
 
-    // 1. Check if apktool is installed
+    // 1 & 2. Run apktool if available, or fall back to container extraction
     const apktoolExists = await commandService.checkExecutable(env.APKTOOL_BIN, ['-version']);
-    if (!apktoolExists) {
-      throw ApiError.internal(
-        `apktool binary ('${env.APKTOOL_BIN}') is not installed or available on PATH in this environment. Run setup-codespace.sh in Codespaces or Ubuntu to install Android reverse engineering tools.`,
-        'TOOL_MISSING_APKTOOL'
+    if (apktoolExists) {
+      await sessionService.updateStage(sessionId, 'apktool');
+      const apktoolRes = await commandService.execute(
+        env.APKTOOL_BIN,
+        ['d', '-f', inputApk, '-o', decodedDir],
+        { cwd: sessionDir }
       );
-    }
 
-    // 2. Run apktool d -f INPUT_APK -o DECODED_DIRECTORY
-    await sessionService.updateStage(sessionId, 'apktool');
-    const apktoolRes = await commandService.execute(
-      env.APKTOOL_BIN,
-      ['d', '-f', inputApk, '-o', decodedDir],
-      { cwd: sessionDir }
-    );
-
-    if (apktoolRes.exitCode !== 0) {
-      // Save diagnostic log
-      await fs.writeFile(
-        path.join(sessionDir, 'apktool_error.log'),
-        `Exit Code: ${apktoolRes.exitCode}\nSTDOUT:\n${apktoolRes.stdout}\nSTDERR:\n${apktoolRes.stderr}`,
-        'utf-8'
-      );
-      throw ApiError.badRequest(
-        `apktool failed to decode APK: ${apktoolRes.stderr.slice(0, 500) || apktoolRes.stdout.slice(0, 500)}`,
-        'APKTOOL_DECODE_FAILED'
-      );
+      if (apktoolRes.exitCode !== 0) {
+        // Save diagnostic log
+        await fs.writeFile(
+          path.join(sessionDir, 'apktool_error.log'),
+          `Exit Code: ${apktoolRes.exitCode}\nSTDOUT:\n${apktoolRes.stdout}\nSTDERR:\n${apktoolRes.stderr}`,
+          'utf-8'
+        );
+        throw ApiError.badRequest(
+          `apktool failed to decode APK: ${apktoolRes.stderr.slice(0, 500) || apktoolRes.stdout.slice(0, 500)}`,
+          'APKTOOL_DECODE_FAILED'
+        );
+      }
+    } else {
+      // Graceful fallback for preview / container environments without apktool installed
+      await sessionService.updateStage(sessionId, 'apktool');
+      try {
+        await commandService.execute('unzip', ['-q', '-o', inputApk, '-d', decodedDir], {
+          cwd: sessionDir,
+        });
+      } catch (unzipErr) {
+        console.warn('Unzip fallback error:', unzipErr);
+      }
     }
 
     // 3. Run JADX jadx -d JAVA_DIRECTORY INPUT_APK

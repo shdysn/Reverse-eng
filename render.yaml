@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: android-re-dashboard
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_TTL_HOURS
+        value: "12"
+      - key: MAX_APK_BYTES
+        value: "1073741824"
+      - key: TEST_KEY_ALIAS
+        value: androidtestkey
+      - key: TEST_KEY_PASSWORD
+        value: androiddevtestkey123

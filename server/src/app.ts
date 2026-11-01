@@ -24,6 +24,7 @@ export function createApp(): express.Application {
       crossOriginResourcePolicy: { policy: 'cross-origin' },
       crossOriginEmbedderPolicy: false,
       contentSecurityPolicy: false, // Allows Monaco Editor and preview workers
+      frameguard: false, // Allows app to render in AI Studio preview iframe
     })
   );
 
