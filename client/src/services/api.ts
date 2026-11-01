@@ -17,6 +17,10 @@ import type {
   PackageNameInfo,
   RenamePackageRequest,
   RenamePackageResponse,
+  RecoveryArchitectureAudit,
+  RecoverSourceRequest,
+  RecoverSourceResponse,
+  ApplyRecoveredSourceRequest,
 } from '../types/index.js';
 
 class ApiService {
@@ -299,6 +303,89 @@ class ApiService {
       body: JSON.stringify(params),
     });
     return this.handleResponse<AiProjectSolutionResponse>(res);
+  }
+
+  /**
+   * AI Source Code Recovery: Project Architecture, Obfuscation, Dependencies & Native Audit
+   */
+  public async getRecoveryAudit(sessionId: string): Promise<RecoveryArchitectureAudit> {
+    const res = await fetch(
+      `${this.baseUrl}/api/ai/recovery/audit/${encodeURIComponent(sessionId)}`,
+      {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      }
+    );
+    return this.handleResponse<RecoveryArchitectureAudit>(res);
+  }
+
+  /**
+   * Get existing saved recovery artifact for a file (for resuming/inspecting)
+   */
+  public async getSavedRecoveryForFile(
+    sessionId: string,
+    filePath: string
+  ): Promise<RecoverSourceResponse | null> {
+    const params = new URLSearchParams({ path: filePath });
+    const res = await fetch(
+      `${this.baseUrl}/api/ai/recovery/file/${encodeURIComponent(sessionId)}?${params.toString()}`,
+      {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      }
+    );
+    return this.handleResponse<RecoverSourceResponse | null>(res);
+  }
+
+  /**
+   * Run AI Source Code Recovery & De-obfuscation on a file (supports AbortSignal cancellation)
+   */
+  public async recoverFileSource(
+    params: RecoverSourceRequest,
+    signal?: AbortSignal
+  ): Promise<RecoverSourceResponse> {
+    const res = await fetch(`${this.baseUrl}/api/ai/recovery/recover-file`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(params),
+      signal,
+    });
+    return this.handleResponse<RecoverSourceResponse>(res);
+  }
+
+  /**
+   * Cancel an active recovery job on the backend
+   */
+  public async cancelRecoveryJob(jobId: string): Promise<{ cancelled: boolean; jobId: string }> {
+    const res = await fetch(
+      `${this.baseUrl}/api/ai/recovery/cancel/${encodeURIComponent(jobId)}`,
+      {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+      }
+    );
+    return this.handleResponse<{ cancelled: boolean; jobId: string }>(res);
+  }
+
+  /**
+   * Explicitly apply a recovered version (analyzed or reconstructed) to the target file
+   * while backing up the original decompiled file
+   */
+  public async applyRecoveredSource(
+    params: ApplyRecoveredSourceRequest
+  ): Promise<{ savedPath: string; backupPath: string }> {
+    const res = await fetch(`${this.baseUrl}/api/ai/recovery/apply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+    return this.handleResponse<{ savedPath: string; backupPath: string }>(res);
   }
 
   /**

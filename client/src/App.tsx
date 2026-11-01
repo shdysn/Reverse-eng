@@ -35,6 +35,7 @@ export function App() {
     treeLoading,
     expandedFolders,
     toggleFolder,
+    loadTree,
     manifestData,
     manifestLoading,
     loadManifest,
@@ -325,6 +326,9 @@ export function App() {
                 onProjectTransform={handleProjectAiTransform}
                 onApplyProjectFile={handleApplyProjectFile}
                 onOpenFile={openFile}
+                onRefreshTree={() => {
+                  if (sessionId) loadTree(sessionId);
+                }}
                 isProcessing={isAiProcessing}
                 lastAiResult={lastAiResult}
                 projectAiResult={projectAiResult}

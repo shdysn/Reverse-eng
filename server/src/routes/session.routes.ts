@@ -151,6 +151,12 @@ sessionRouter.get(
       archive.directory(decodedDir, 'decompiled');
     }
 
+    // 3. Add AI Recovered & Reconstructed source code if present
+    const recoveredDir = path.join(sessionDir, 'recovered');
+    if (fsSync.existsSync(recoveredDir)) {
+      archive.directory(recoveredDir, 'ai-recovered-src');
+    }
+
     await archive.finalize();
   })
 );

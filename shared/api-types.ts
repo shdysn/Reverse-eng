@@ -262,3 +262,103 @@ export interface RenamePackageResponse {
   updatedFilesCount: number;
   updatedFiles: string[];
 }
+
+/**
+ * AI Source Code Recovery Module
+ */
+export interface NativeLibraryInfo {
+  name: string;
+  path: string;
+  architecture: string;
+  size: number;
+  knownLibrary?: string;
+}
+
+export interface DetectedDependency {
+  name: string;
+  packagePrefix: string;
+  category: 'Networking' | 'Analytics' | 'Database' | 'UI' | 'Security' | 'Cloud/Firebase' | 'Injection/Reactive' | 'Kotlin/AndroidX' | 'Other';
+  confidence: 'high' | 'medium';
+}
+
+export interface ObfuscatedSymbolCandidate {
+  filePath: string;
+  className: string;
+  obfuscationScore: number; // 0-100
+  shortIdentifiersCount: number;
+  incompleteDecompilation: boolean;
+  correspondingSmaliPath?: string;
+}
+
+export interface RecoveryArchitectureAudit {
+  sessionId: string;
+  auditedAt: string;
+  packageName: string;
+  totalJavaFiles: number;
+  totalSmaliFiles: number;
+  totalXmlFiles: number;
+  totalAssets: number;
+  overallObfuscationScore: number; // 0-100
+  obfuscationLevel: 'Low' | 'Moderate' | 'High' | 'Heavy (ProGuard/R8)';
+  nativeLibraries: NativeLibraryInfo[];
+  detectedDependencies: DetectedDependency[];
+  obfuscatedCandidates: ObfuscatedSymbolCandidate[];
+  packageHierarchy: { packageName: string; classCount: number }[];
+  assetsSummary: { path: string; size: number; type: string }[];
+  recoveredFilesCount: number;
+}
+
+export interface SymbolRenameSuggestion {
+  originalName: string;
+  suggestedName: string;
+  symbolType: 'class' | 'method' | 'field' | 'variable';
+  confidence: number;
+  reasoning: string;
+}
+
+export interface RecoverSourceRequest {
+  sessionId: string;
+  filePath: string;
+  jobId?: string;
+  targetLanguage?: 'java' | 'kotlin';
+}
+
+export interface RecoverSourceResponse {
+  sessionId: string;
+  filePath: string;
+  fileName: string;
+  correspondingSmaliPath?: string;
+  hasSmaliReference: boolean;
+  originalContent: string;
+  analyzedContent: string;
+  reconstructedContent: string;
+  recoveredFilePath: string;
+  obfuscationDetected: boolean;
+  incompleteDecompilationFixed: boolean;
+  symbolMappings: SymbolRenameSuggestion[];
+  crossClassRelationships: string[];
+  smaliComparisonNotes: string;
+  architectureSummary: string;
+  recoveredAt: string;
+}
+
+export interface RecoveryJobStatus {
+  jobId: string;
+  sessionId: string;
+  filePath: string;
+  status: 'idle' | 'running' | 'completed' | 'cancelled' | 'failed';
+  stage: string;
+  progress: number;
+  startedAt: number;
+  updatedAt: number;
+  error?: string;
+  result?: RecoverSourceResponse;
+}
+
+export interface ApplyRecoveredSourceRequest {
+  sessionId: string;
+  filePath: string;
+  version: 'analyzed' | 'reconstructed';
+  customContent?: string;
+}
+

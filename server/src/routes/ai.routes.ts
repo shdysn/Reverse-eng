@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { aiService } from '../services/ai.service.js';
+import { recoveryService } from '../services/recovery.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { ApiResponse, AiPatchResponse } from '@android-re/shared';
@@ -61,3 +62,107 @@ aiRouter.post(
     });
   })
 );
+
+/**
+ * AI Source Code Recovery Endpoints
+ */
+aiRouter.get(
+  '/recovery/audit/:sessionId',
+  asyncHandler(async (req, res) => {
+    const audit = await recoveryService.auditProjectArchitecture(req.params.sessionId);
+    res.json({
+      success: true,
+      data: audit,
+    });
+  })
+);
+
+aiRouter.get(
+  '/recovery/file/:sessionId',
+  asyncHandler(async (req, res) => {
+    const filePath = req.query.path as string;
+    if (!filePath) {
+      throw ApiError.badRequest('filePath query parameter is required', 'MISSING_FILE_PATH');
+    }
+    const saved = await recoveryService.getSavedRecoveryForFile(req.params.sessionId, filePath);
+    res.json({
+      success: true,
+      data: saved,
+    });
+  })
+);
+
+const recoverSourceSchema = z.object({
+  sessionId: z.string().min(1, 'sessionId is required'),
+  filePath: z.string().min(1, 'filePath is required'),
+  jobId: z.string().optional(),
+  targetLanguage: z.enum(['java', 'kotlin']).optional(),
+});
+
+aiRouter.post(
+  '/recovery/recover-file',
+  asyncHandler(async (req, res) => {
+    const parsed = recoverSourceSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw ApiError.badRequest(
+        `Invalid recovery request: ${parsed.error.errors.map((e) => e.message).join(', ')}`,
+        'INVALID_RECOVERY_REQUEST'
+      );
+    }
+
+    const result = await recoveryService.recoverFileSource(parsed.data);
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);
+
+aiRouter.post(
+  '/recovery/cancel/:jobId',
+  asyncHandler(async (req, res) => {
+    const cancelled = recoveryService.cancelJob(req.params.jobId);
+    res.json({
+      success: true,
+      data: { cancelled, jobId: req.params.jobId },
+    });
+  })
+);
+
+aiRouter.get(
+  '/recovery/status/:jobId',
+  asyncHandler(async (req, res) => {
+    const status = recoveryService.getJobStatus(req.params.jobId);
+    res.json({
+      success: true,
+      data: status,
+    });
+  })
+);
+
+const applyRecoverySchema = z.object({
+  sessionId: z.string().min(1),
+  filePath: z.string().min(1),
+  version: z.enum(['analyzed', 'reconstructed']),
+  customContent: z.string().optional(),
+});
+
+aiRouter.post(
+  '/recovery/apply',
+  asyncHandler(async (req, res) => {
+    const parsed = applyRecoverySchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw ApiError.badRequest(
+        `Invalid apply request: ${parsed.error.errors.map((e) => e.message).join(', ')}`,
+        'INVALID_APPLY_REQUEST'
+      );
+    }
+
+    const result = await recoveryService.applyRecoveredSource(parsed.data);
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);
+

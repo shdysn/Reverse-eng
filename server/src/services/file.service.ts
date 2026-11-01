@@ -77,7 +77,8 @@ export class FileService {
           const binary = isBinaryFile(entry.name) && !isImg;
           const oversized = size > env.MAX_TEXT_BYTES;
           const firstSegment = relPath.split('/')[0];
-          const isUnderWritableDir = firstSegment === 'decoded' || firstSegment === 'java';
+          const isUnderWritableDir =
+            firstSegment === 'decoded' || firstSegment === 'java' || firstSegment === 'recovered';
           const editable = !binary && !isImg && !oversized && isUnderWritableDir;
 
           files.push({
@@ -158,7 +159,8 @@ export class FileService {
     const content = await fs.readFile(targetPath, 'utf-8');
     const language = getFileLanguage(targetPath);
     const firstSegment = safeRel.split('/')[0];
-    const editable = firstSegment === 'decoded' || firstSegment === 'java';
+    const editable =
+      firstSegment === 'decoded' || firstSegment === 'java' || firstSegment === 'recovered';
     const isSvg = targetPath.toLowerCase().endsWith('.svg');
 
     return {

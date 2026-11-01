@@ -68,13 +68,13 @@ export async function resolveSafePath(
     }
   }
 
-  // 5. If writing/modifying, enforce allowed directories (only decoded/ or java/)
+  // 5. If writing/modifying, enforce allowed directories (only decoded/, java/, or recovered/)
   if (checkWritable) {
     const firstSegment = rel.split(path.sep)[0];
-    const allowedWritablePrefixes = ['decoded', 'java'];
+    const allowedWritablePrefixes = ['decoded', 'java', 'recovered'];
     if (!allowedWritablePrefixes.includes(firstSegment)) {
       throw ApiError.forbidden(
-        `File modification is only permitted in decoded/ and java/ directories. '${firstSegment}' is read-only.`,
+        `File modification is only permitted in decoded/, java/, and recovered/ directories. '${firstSegment}' is read-only.`,
         'READ_ONLY_LOCATION'
       );
     }
