@@ -162,23 +162,37 @@ export class ApkService {
     const apktoolExists = await commandService.checkExecutable(env.APKTOOL_BIN, ['-version']);
     if (apktoolExists) {
       await sessionService.updateStage(sessionId, 'apktool');
-      const apktoolRes = await commandService.execute(
+      let apktoolRes = await commandService.execute(
         env.APKTOOL_BIN,
         ['d', '-f', inputApk, '-o', decodedDir],
         { cwd: sessionDir }
       );
 
+      // If standard decoding failed (e.g. resource errors on complex APKs), retry keeping raw resources (-r)
       if (apktoolRes.exitCode !== 0) {
-        // Save diagnostic log
+        console.warn('Standard apktool decode failed, retrying with raw resources (-r)...');
+        apktoolRes = await commandService.execute(
+          env.APKTOOL_BIN,
+          ['d', '-r', '-f', inputApk, '-o', decodedDir],
+          { cwd: sessionDir }
+        );
+      }
+
+      // If apktool still failed, fall back to container extraction via unzip so files are still browsable
+      if (apktoolRes.exitCode !== 0) {
+        console.warn('Apktool decode failed, falling back to container extraction via unzip...');
         await fs.writeFile(
-          path.join(sessionDir, 'apktool_error.log'),
+          path.join(sessionDir, 'apktool_warning.log'),
           `Exit Code: ${apktoolRes.exitCode}\nSTDOUT:\n${apktoolRes.stdout}\nSTDERR:\n${apktoolRes.stderr}`,
           'utf-8'
         );
-        throw ApiError.badRequest(
-          `apktool failed to decode APK: ${apktoolRes.stderr.slice(0, 500) || apktoolRes.stdout.slice(0, 500)}`,
-          'APKTOOL_DECODE_FAILED'
-        );
+        try {
+          await commandService.execute('unzip', ['-q', '-o', inputApk, '-d', decodedDir], {
+            cwd: sessionDir,
+          });
+        } catch (unzipErr) {
+          console.warn('Fallback unzip error:', unzipErr);
+        }
       }
     } else {
       // Graceful fallback for preview / container environments without apktool installed

@@ -49,7 +49,10 @@ export function useSession() {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
-  // Check health on mount
+  const SESSION_STORAGE_KEY = 'android_re_active_session_id';
+  const FILENAME_STORAGE_KEY = 'android_re_active_filename';
+
+  // Check health and restore active session on mount
   const checkHealth = useCallback(async () => {
     try {
       setHealthLoading(true);
@@ -68,10 +71,6 @@ export function useSession() {
       setHealthLoading(false);
     }
   }, [addNotification]);
-
-  useEffect(() => {
-    checkHealth();
-  }, [checkHealth]);
 
   // Load tree
   const loadTree = useCallback(
@@ -119,6 +118,37 @@ export function useSession() {
     [addNotification]
   );
 
+  useEffect(() => {
+    checkHealth();
+
+    // Restore existing session from localStorage if user reloads the page
+    try {
+      const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+      const savedFilename = localStorage.getItem(FILENAME_STORAGE_KEY);
+      if (savedSessionId) {
+        api
+          .getSession(savedSessionId)
+          .then((sess) => {
+            if (sess && sess.id) {
+              setSessionId(sess.id);
+              setOriginalFilename(savedFilename || sess.originalFilename || 'app.apk');
+              loadTree(sess.id);
+              loadManifest(sess.id);
+            } else {
+              localStorage.removeItem(SESSION_STORAGE_KEY);
+              localStorage.removeItem(FILENAME_STORAGE_KEY);
+            }
+          })
+          .catch(() => {
+            localStorage.removeItem(SESSION_STORAGE_KEY);
+            localStorage.removeItem(FILENAME_STORAGE_KEY);
+          });
+      }
+    } catch {
+      // ignore localStorage error
+    }
+  }, [checkHealth, loadTree, loadManifest]);
+
   // Set active session
   const activateSession = useCallback(
     (sId: string, filename: string, partialJadx?: boolean) => {
@@ -127,6 +157,13 @@ export function useSession() {
       setRebuildResult(null);
       loadTree(sId);
       loadManifest(sId);
+
+      try {
+        localStorage.setItem(SESSION_STORAGE_KEY, sId);
+        localStorage.setItem(FILENAME_STORAGE_KEY, filename);
+      } catch {
+        // ignore storage error
+      }
 
       // Automatically open the mobile explorer drawer so files are visible immediately on phones
       if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -168,6 +205,13 @@ export function useSession() {
 
   // Reset / Delete Session
   const resetWorkspace = useCallback(async () => {
+    try {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem(FILENAME_STORAGE_KEY);
+    } catch {
+      // ignore storage error
+    }
+
     if (sessionId) {
       try {
         await api.deleteSession(sessionId);

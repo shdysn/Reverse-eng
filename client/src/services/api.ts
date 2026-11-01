@@ -66,6 +66,20 @@ class ApiService {
   }
 
   /**
+   * Get Session metadata
+   */
+  public async getSession(sessionId: string): Promise<any> {
+    const res = await fetch(
+      `${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}`,
+      {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      }
+    );
+    return this.handleResponse<any>(res);
+  }
+
+  /**
    * Upload Session Initialization
    */
   public async initUpload(params: UploadInitRequest): Promise<UploadInitData> {
