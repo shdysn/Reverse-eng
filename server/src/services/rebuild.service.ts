@@ -4,6 +4,7 @@ import { env, ABSOLUTE_TEST_KEYSTORE } from '../config/env.js';
 import { ApiError } from '../utils/apiError.js';
 import { commandService } from './command.service.js';
 import { sessionService } from './session.service.js';
+import { resourceSanitizerService } from './resource-sanitizer.service.js';
 import type { RebuildData } from '../types/index.js';
 
 export class RebuildService {
@@ -58,6 +59,15 @@ export class RebuildService {
         );
       }
 
+      const logs: string[] = [];
+
+      // 0. Sanitize resource filenames (Fixes "Invalid file name" errors)
+      logs.push('[0/4] Sanitizing resource filenames for Android compliance...');
+      const sanitizeRes = await resourceSanitizerService.sanitizeAllResources(sessionId);
+      if (sanitizeRes.sanitizedCount > 0) {
+        logs.push(`   - Sanitized ${sanitizeRes.sanitizedCount} resource(s) and updated references in ${sanitizeRes.filesUpdated} file(s).`);
+      }
+
       // Clean up previous build outputs
       await fs.rm(buildDir, { recursive: true, force: true });
       await fs.mkdir(buildDir, { recursive: true });
@@ -65,8 +75,6 @@ export class RebuildService {
       const unsignedApk = path.join(buildDir, 'unsigned.apk');
       const alignedApk = path.join(buildDir, 'aligned.apk');
       const signedApk = path.join(buildDir, 'signed.apk');
-
-      const logs: string[] = [];
 
       // 1. apktool b DECODED_DIRECTORY -o UNSIGNED_APK
       logs.push('[1/4] Running apktool b to assemble unsigned APK...');
