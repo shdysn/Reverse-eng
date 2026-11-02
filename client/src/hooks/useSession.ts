@@ -52,25 +52,34 @@ export function useSession() {
   const SESSION_STORAGE_KEY = 'android_re_active_session_id';
   const FILENAME_STORAGE_KEY = 'android_re_active_filename';
 
-  // Check health and restore active session on mount
-  const checkHealth = useCallback(async () => {
-    try {
-      setHealthLoading(true);
-      const data = await api.getHealth();
-      setHealth(data);
-      if (!data.toolsAvailable) {
-        addNotification(
-          'warning',
-          'External Android Tools Not Installed',
-          'Required APK tools (apktool/java) are unavailable in this environment. Run setup-codespace.sh in Codespaces or Ubuntu to install them.'
-        );
+  // Check health and restore active session on mount with automatic retry for server startup
+  const checkHealth = useCallback(
+    async (retriesLeft = 3, delayMs = 1200) => {
+      try {
+        setHealthLoading(true);
+        const data = await api.getHealth();
+        setHealth(data);
+        // Clear any previous "Backend Unavailable" notifications when backend becomes online
+        setNotifications((prev) => prev.filter((n) => n.title !== 'Backend Unavailable'));
+        if (!data.toolsAvailable) {
+          addNotification(
+            'warning',
+            'External Android Tools Not Installed',
+            'Required APK tools (apktool/java) are unavailable in this environment. Run setup-codespace.sh in Codespaces or Ubuntu to install them.'
+          );
+        }
+      } catch (err) {
+        if (retriesLeft > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          return checkHealth(retriesLeft - 1, delayMs * 1.5);
+        }
+        addNotification('error', 'Backend Unavailable', (err as Error).message);
+      } finally {
+        setHealthLoading(false);
       }
-    } catch (err) {
-      addNotification('error', 'Backend Unavailable', (err as Error).message);
-    } finally {
-      setHealthLoading(false);
-    }
-  }, [addNotification]);
+    },
+    [addNotification]
+  );
 
   // Load tree
   const loadTree = useCallback(
