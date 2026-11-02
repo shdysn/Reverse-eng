@@ -9,7 +9,9 @@ import { AiCopilotPanel } from './components/AiCopilotPanel.js';
 import { ApkUpload } from './components/ApkUpload.js';
 import { PackageNameModal } from './components/PackageNameModal.js';
 import { AndroidStudioProjectModal } from './components/AndroidStudioProjectModal.js';
+import { SessionManagerModal } from './components/SessionManagerModal.js';
 import { MobilePanels } from './components/MobilePanels.js';
+
 import { useSession } from './hooks/useSession.js';
 import { useEditorTabs } from './hooks/useEditorTabs.js';
 import { api } from './services/api.js';
@@ -61,6 +63,7 @@ export function App() {
   const [mobileAiOpen, setMobileAiOpen] = useState(false);
   const [packageModalOpen, setPackageModalOpen] = useState(false);
   const [androidStudioModalOpen, setAndroidStudioModalOpen] = useState(false);
+  const [sessionManagerModalOpen, setSessionManagerModalOpen] = useState(false);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [lastAiResult, setLastAiResult] = useState<AiPatchResponse | null>(null);
   const [projectAiResult, setProjectAiResult] = useState<AiProjectSolutionResponse | null>(null);
@@ -229,6 +232,7 @@ export function App() {
         sourceDownloadUrl={sessionId ? api.getSourceDownloadUrl(sessionId) : null}
         gradleDownloadUrl={sessionId ? api.getGradleDownloadUrl(sessionId) : null}
         onOpenUpload={() => setUploadModalOpen(true)}
+        onOpenSessionManager={() => setSessionManagerModalOpen(true)}
         onOpenPackageModal={() => setPackageModalOpen(true)}
         onOpenAndroidStudioModal={() => setAndroidStudioModalOpen(true)}
         onSaveFile={saveCurrentFile}
@@ -400,6 +404,16 @@ export function App() {
         onRefreshTree={() => {
           if (sessionId) loadTree(sessionId);
         }}
+      />
+
+      {/* Phase 6: Persistent Recovery Sessions & Project State Management Modal */}
+      <SessionManagerModal
+        isOpen={sessionManagerModalOpen}
+        currentSessionId={sessionId}
+        onClose={() => setSessionManagerModalOpen(false)}
+        onSwitchSession={(sId) => activateSession(sId, 'session')}
+        onOpenUpload={() => setUploadModalOpen(true)}
+        onAddNotification={addNotification}
       />
 
       {/* Responsive Mobile Drawers */}

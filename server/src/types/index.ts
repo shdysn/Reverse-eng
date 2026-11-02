@@ -18,6 +18,16 @@ export interface SessionRecord {
   error?: string;
   partialJadx?: boolean;
   rebuilt?: boolean;
+  displayName?: string;
+  isArchived?: boolean;
+  workflowStage?: import('@android-re/shared').RecoveryWorkflowStage;
+  packageName?: string;
+  versionName?: string;
+  versionCode?: number;
+  originalSha256?: string;
+  interrupted?: boolean;
+  activeOperation?: string;
+  operationStartedAt?: number;
 }
 
 export interface ValidatedSessionPath {
@@ -25,3 +35,4 @@ export interface ValidatedSessionPath {
   targetPath: string;
   relativePath: string;
 }
+

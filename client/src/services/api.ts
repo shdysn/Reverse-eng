@@ -767,6 +767,212 @@ class ApiService {
   }
 
   /**
+   * Phase 6: List All Recovery Sessions with search and filters
+   */
+  public async listSessions(params?: {
+    search?: string;
+    status?: string;
+    includeArchived?: boolean;
+  }): Promise<{ sessions: import('@android-re/shared').RecoverySessionListItem[]; totalCount: number }> {
+    const query = new URLSearchParams();
+    if (params?.search) query.set('search', params.search);
+    if (params?.status) query.set('status', params.status);
+    if (params?.includeArchived) query.set('includeArchived', 'true');
+
+    const res = await fetch(`${this.baseUrl}/api/sessions?${query.toString()}`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    return this.handleResponse<{ sessions: import('@android-re/shared').RecoverySessionListItem[]; totalCount: number }>(res);
+  }
+
+  /**
+   * Phase 6: Storage Environment Diagnostics
+   */
+  public async getStorageInfo(): Promise<import('@android-re/shared').StorageEnvironmentInfo> {
+    const res = await fetch(`${this.baseUrl}/api/sessions/storage/info`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    return this.handleResponse<import('@android-re/shared').StorageEnvironmentInfo>(res);
+  }
+
+  /**
+   * Phase 6: Detailed Session Summary
+   */
+  public async getSessionSummary(sessionId: string): Promise<{
+    session: any;
+    stageInfo: any;
+    stats: { sizeBytes: number; fileCount: number };
+    versions: import('@android-re/shared').SessionVersionSnapshot[];
+  }> {
+    const res = await fetch(`${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/summary`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    return this.handleResponse(res);
+  }
+
+  /**
+   * Phase 6: Resume Session
+   */
+  public async resumeSession(sessionId: string): Promise<any> {
+    const res = await fetch(`${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/resume`, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+    });
+    return this.handleResponse(res);
+  }
+
+  /**
+   * Phase 6: Rename Session
+   */
+  public async renameSession(sessionId: string, displayName: string): Promise<any> {
+    const res = await fetch(`${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/rename`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ displayName }),
+    });
+    return this.handleResponse(res);
+  }
+
+  /**
+   * Phase 6: Archive / Unarchive Session
+   */
+  public async archiveSession(sessionId: string, isArchived: boolean): Promise<any> {
+    const res = await fetch(`${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/archive`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ isArchived }),
+    });
+    return this.handleResponse(res);
+  }
+
+  /**
+   * Phase 6: Duplicate Session
+   */
+  public async duplicateSession(sessionId: string, displayName?: string): Promise<any> {
+    const res = await fetch(`${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/duplicate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ displayName }),
+    });
+    return this.handleResponse(res);
+  }
+
+  /**
+   * Phase 6: Get Session Manifest
+   */
+  public async getSessionManifest(sessionId: string): Promise<import('@android-re/shared').RecoverySessionManifest> {
+    const res = await fetch(`${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/manifest`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    return this.handleResponse<import('@android-re/shared').RecoverySessionManifest>(res);
+  }
+
+  /**
+   * Phase 6: Get Session Export Bundle URL (.zip)
+   */
+  public getSessionExportBundleUrl(sessionId: string): string {
+    return `${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/export-bundle`;
+  }
+
+  /**
+   * Phase 6: List Version Snapshots
+   */
+  public async listSnapshots(sessionId: string): Promise<import('@android-re/shared').SessionVersionSnapshot[]> {
+    const res = await fetch(`${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/snapshots`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    return this.handleResponse<import('@android-re/shared').SessionVersionSnapshot[]>(res);
+  }
+
+  /**
+   * Phase 6: Create Version Snapshot
+   */
+  public async createSnapshot(
+    sessionId: string,
+    params: import('@android-re/shared').CreateVersionSnapshotRequest
+  ): Promise<import('@android-re/shared').SessionVersionSnapshot> {
+    const res = await fetch(`${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/snapshots`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+    return this.handleResponse<import('@android-re/shared').SessionVersionSnapshot>(res);
+  }
+
+  /**
+   * Phase 6: Restore Version Snapshot
+   */
+  public async restoreSnapshot(
+    sessionId: string,
+    snapshotId: string
+  ): Promise<{ restoredSnapshot: import('@android-re/shared').SessionVersionSnapshot; backupSnapshotId: string }> {
+    const res = await fetch(
+      `${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/snapshots/${encodeURIComponent(snapshotId)}/restore`,
+      {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+      }
+    );
+    return this.handleResponse<{ restoredSnapshot: import('@android-re/shared').SessionVersionSnapshot; backupSnapshotId: string }>(res);
+  }
+
+  /**
+   * Phase 6: Diff Snapshot with Current State
+   */
+  public async getSnapshotDiff(
+    sessionId: string,
+    snapshotId: string
+  ): Promise<import('@android-re/shared').VersionDiffResult> {
+    const res = await fetch(
+      `${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/snapshots/${encodeURIComponent(snapshotId)}/diff`,
+      {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      }
+    );
+    return this.handleResponse<import('@android-re/shared').VersionDiffResult>(res);
+  }
+
+  /**
+   * Phase 6: Get Snapshot Download URL
+   */
+  public getSnapshotDownloadUrl(sessionId: string, snapshotId: string): string {
+    return `${this.baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/snapshots/${encodeURIComponent(snapshotId)}/download`;
+  }
+
+  /**
+   * Phase 6: Import Full Session Bundle (.zip)
+   */
+  public async importSessionBundle(bundleFile: File): Promise<import('@android-re/shared').SessionImportResponse> {
+    const formData = new FormData();
+    formData.append('bundle', bundleFile);
+
+    const res = await fetch(`${this.baseUrl}/api/sessions/import-bundle`, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      body: formData,
+    });
+    return this.handleResponse<import('@android-re/shared').SessionImportResponse>(res);
+  }
+
+  /**
    * Delete Session
    */
   public async deleteSession(sessionId: string): Promise<{ deleted: boolean; sessionId: string }> {
@@ -782,3 +988,4 @@ class ApiService {
 }
 
 export const api = new ApiService();
+

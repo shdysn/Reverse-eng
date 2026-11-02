@@ -1208,6 +1208,141 @@ export interface ApplyFinalRepairsResponse {
   updatedComparisonReport: FinalComparisonReport;
 }
 
+/**
+ * Phase 6: Persistent Recovery Sessions and Project State Management Types
+ */
+export type RecoveryWorkflowStage =
+  | 'uploaded'
+  | 'decompiled'
+  | 'ai_analyzed'
+  | 'reconstructed'
+  | 'gradle_built'
+  | 'compared'
+  | 'interrupted'
+  | 'failed';
+
+export interface SessionVersionSnapshot {
+  id: string;
+  tag: string;
+  label: string;
+  description?: string;
+  createdAt: string;
+  createdAtMs: number;
+  workflowStage: RecoveryWorkflowStage;
+  fileCount: number;
+  totalSizeBytes: number;
+  sha256: string;
+  isAutomatic?: boolean;
+}
+
+export interface SessionManifestFileEntry {
+  path: string;
+  sizeBytes: number;
+  sha256: string;
+}
+
+export interface RecoverySessionManifest {
+  manifestVersion: string;
+  sessionId: string;
+  displayName: string;
+  originalFilename: string;
+  originalSha256: string;
+  fileSize: number;
+  packageName?: string;
+  versionName?: string;
+  versionCode?: number;
+  createdAt: string;
+  lastAccessedAt: string;
+  workflowStage: RecoveryWorkflowStage;
+  progressPercent: number;
+  hasDecompiledCode: boolean;
+  hasSmaliCode: boolean;
+  hasAiRecovery: boolean;
+  hasReconstructedProject: boolean;
+  hasGradleBuild: boolean;
+  hasComparisonReport: boolean;
+  versions: SessionVersionSnapshot[];
+  keyArtifacts: SessionManifestFileEntry[];
+  environment: {
+    exportTimestamp: string;
+    nodeVersion: string;
+  };
+}
+
+export interface RecoverySessionListItem {
+  id: string;
+  displayName: string;
+  originalFilename: string;
+  fileSize: number;
+  originalSha256?: string;
+  packageName?: string;
+  versionName?: string;
+  createdAt: number;
+  lastAccessedAt: number;
+  stage: ProcessingStage;
+  workflowStage: RecoveryWorkflowStage;
+  progressPercent: number;
+  isArchived: boolean;
+  isBusy: boolean;
+  busyOperation?: string;
+  isInterrupted?: boolean;
+  totalDiskSizeBytes: number;
+  fileCount: number;
+  hasReconstructedProject: boolean;
+  hasComparisonReport: boolean;
+  hasGradleBuild: boolean;
+  versionsCount: number;
+  error?: string;
+}
+
+export interface StorageEnvironmentInfo {
+  storagePath: string;
+  isPersistentVolume: boolean;
+  isCodespace: boolean;
+  warningMessage?: string;
+  totalSessions: number;
+  totalDiskUsageBytes: number;
+  freeDiskBytes?: number;
+}
+
+export interface VersionDiffResult {
+  snapshotId: string;
+  snapshotLabel: string;
+  snapshotCreatedAt: string;
+  addedFiles: string[];
+  modifiedFiles: string[];
+  deletedFiles: string[];
+  unchangedFilesCount: number;
+}
+
+export interface CreateVersionSnapshotRequest {
+  tag: string;
+  label: string;
+  description?: string;
+}
+
+export interface RenameSessionRequest {
+  displayName: string;
+}
+
+export interface ArchiveSessionRequest {
+  isArchived: boolean;
+}
+
+export interface DuplicateSessionRequest {
+  displayName?: string;
+}
+
+export interface SessionImportResponse {
+  sessionId: string;
+  displayName: string;
+  originalFilename: string;
+  workflowStage: RecoveryWorkflowStage;
+  totalFilesRestored: number;
+  manifest: RecoverySessionManifest;
+}
+
+
 
 
 

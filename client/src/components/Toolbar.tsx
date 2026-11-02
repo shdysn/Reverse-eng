@@ -14,6 +14,7 @@ import {
   FolderArchive,
   Package,
   FileBox,
+  Layers,
 } from 'lucide-react';
 import type { RebuildData } from '../types/index.js';
 
@@ -26,6 +27,7 @@ interface ToolbarProps {
   sourceDownloadUrl?: string | null;
   gradleDownloadUrl?: string | null;
   onOpenUpload: () => void;
+  onOpenSessionManager?: () => void;
   onOpenPackageModal?: () => void;
   onOpenAndroidStudioModal?: () => void;
   onSaveFile: () => void;
@@ -47,12 +49,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   sourceDownloadUrl,
   gradleDownloadUrl,
   onOpenUpload,
+  onOpenSessionManager,
   onOpenPackageModal,
   onOpenAndroidStudioModal,
   onSaveFile,
   onRescanManifest,
   onRebuild,
   onResetWorkspace,
+
   onToggleMobileExplorer,
   onToggleMobileSecurity,
   onToggleAiCopilot,
@@ -102,6 +106,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <ShieldAlert className="w-4 h-4" />
         </button>
 
+        {/* Sessions & Project State Manager Button */}
+        {onOpenSessionManager && (
+          <button
+            type="button"
+            onClick={onOpenSessionManager}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] hover:text-white rounded border border-[#30363d] text-xs font-medium transition-all shadow-sm active:scale-95"
+            title="Recovery Sessions & State Management (Checkpoints, Backups, History)"
+          >
+            <Layers className="w-3.5 h-3.5 text-[#58a6ff]" />
+            <span className="hidden sm:inline">Sessions</span>
+          </button>
+        )}
+
         {/* Upload Button */}
         <button
           type="button"
@@ -112,6 +129,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <Upload className="w-3.5 h-3.5 text-[#2f81f7]" />
           <span className="hidden sm:inline">Upload APK</span>
         </button>
+
 
         {/* Save Button */}
         <button

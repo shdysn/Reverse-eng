@@ -32,11 +32,92 @@ function createZipArchive(options: Record<string, unknown> = { zlib: { level: 6 
   throw new Error('Unable to initialize ZipArchive stream');
 }
 
+import { sessionPortabilityService } from '../services/session-portability.service.js';
+import { ABSOLUTE_WORK_ROOT } from '../config/env.js';
+import multer from 'multer';
+import fs from 'node:fs/promises';
+
 export const sessionRouter = Router();
+
+const tmpUploadDir = path.join(ABSOLUTE_WORK_ROOT, '.tmp_imports');
+fsSync.mkdirSync(tmpUploadDir, { recursive: true });
+
+const bundleUpload = multer({
+  dest: tmpUploadDir,
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB max
+});
 
 const fileWriteSchema = z.object({
   content: z.string(),
 });
+
+const renameSessionSchema = z.object({
+  displayName: z.string().min(1, 'Display name cannot be empty'),
+});
+
+const archiveSessionSchema = z.object({
+  isArchived: z.boolean(),
+});
+
+const duplicateSessionSchema = z.object({
+  displayName: z.string().optional(),
+});
+
+const createSnapshotSchema = z.object({
+  tag: z.string().optional(),
+  label: z.string().min(1, 'Snapshot label is required'),
+  description: z.string().optional(),
+});
+
+// GET /api/sessions - List all recovery sessions
+sessionRouter.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const search = req.query.search as string | undefined;
+    const status = req.query.status as string | undefined;
+    const includeArchived = req.query.includeArchived === 'true';
+
+    const result = await sessionService.listAllSessions({
+      search,
+      status,
+      includeArchived,
+    });
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);
+
+// GET /api/sessions/storage/info - Storage environment info
+sessionRouter.get(
+  '/storage/info',
+  asyncHandler(async (_req, res) => {
+    const info = await sessionService.getStorageEnvironmentInfo();
+    res.json({
+      success: true,
+      data: info,
+    });
+  })
+);
+
+// POST /api/sessions/import-bundle - Import full session bundle (.zip)
+sessionRouter.post(
+  '/import-bundle',
+  bundleUpload.single('bundle'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) {
+      throw ApiError.badRequest('No session bundle zip file uploaded', 'NO_FILE');
+    }
+
+    const result = await sessionPortabilityService.importSessionBundle(req.file.path);
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);
 
 // GET /api/sessions/:sessionId - Get session metadata
 sessionRouter.get(
@@ -50,6 +131,199 @@ sessionRouter.get(
     });
   })
 );
+
+// GET /api/sessions/:sessionId/summary - Detailed snapshot summary
+sessionRouter.get(
+  '/:sessionId/summary',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const session = await sessionService.getSession(req.params.sessionId);
+    if (!session) throw ApiError.notFound('Session not found', 'SESSION_NOT_FOUND');
+    const stageInfo = await sessionPortabilityService.inferWorkflowStage(req.params.sessionId);
+    const sessionDir = sessionService.getSessionDir(req.params.sessionId);
+    const stats = await sessionPortabilityService.getDirStats(sessionDir);
+    const versions = await sessionPortabilityService.listVersionSnapshots(req.params.sessionId);
+
+    res.json({
+      success: true,
+      data: {
+        session,
+        stageInfo,
+        stats,
+        versions,
+      },
+    });
+  })
+);
+
+// POST /api/sessions/:sessionId/resume - Resume session
+sessionRouter.post(
+  '/:sessionId/resume',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const session = await sessionService.resumeSession(req.params.sessionId);
+    res.json({
+      success: true,
+      data: session,
+    });
+  })
+);
+
+// POST /api/sessions/:sessionId/rename - Rename session
+sessionRouter.post(
+  '/:sessionId/rename',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const parsed = renameSessionSchema.parse(req.body);
+    const session = await sessionService.renameSession(req.params.sessionId, parsed.displayName);
+    res.json({
+      success: true,
+      data: session,
+    });
+  })
+);
+
+// POST /api/sessions/:sessionId/archive - Archive session
+sessionRouter.post(
+  '/:sessionId/archive',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const parsed = archiveSessionSchema.parse(req.body);
+    const session = await sessionService.archiveSession(req.params.sessionId, parsed.isArchived);
+    res.json({
+      success: true,
+      data: session,
+    });
+  })
+);
+
+// POST /api/sessions/:sessionId/duplicate - Duplicate session
+sessionRouter.post(
+  '/:sessionId/duplicate',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const parsed = duplicateSessionSchema.parse(req.body || {});
+    const duplicated = await sessionService.duplicateSession(req.params.sessionId, parsed.displayName);
+    res.json({
+      success: true,
+      data: duplicated,
+    });
+  })
+);
+
+// GET /api/sessions/:sessionId/manifest - Get session manifest
+sessionRouter.get(
+  '/:sessionId/manifest',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const manifest = await sessionPortabilityService.generateManifest(req.params.sessionId);
+    res.json({
+      success: true,
+      data: manifest,
+    });
+  })
+);
+
+// GET /api/sessions/:sessionId/export-bundle - Export entire session bundle ZIP
+sessionRouter.get(
+  '/:sessionId/export-bundle',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const session = await sessionService.getSession(req.params.sessionId);
+    if (!session) throw ApiError.notFound('Session not found', 'SESSION_NOT_FOUND');
+    const safeName = (session.displayName || session.originalFilename).replace(/[^a-zA-Z0-9_-]/g, '_');
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}-recovery-bundle.zip"`);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    await sessionPortabilityService.exportSessionBundle(req.params.sessionId, res);
+  })
+);
+
+// GET /api/sessions/:sessionId/snapshots - List snapshots
+sessionRouter.get(
+  '/:sessionId/snapshots',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const snapshots = await sessionPortabilityService.listVersionSnapshots(req.params.sessionId);
+    res.json({
+      success: true,
+      data: snapshots,
+    });
+  })
+);
+
+// POST /api/sessions/:sessionId/snapshots - Create snapshot
+sessionRouter.post(
+  '/:sessionId/snapshots',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const parsed = createSnapshotSchema.parse(req.body);
+    const snapshot = await sessionPortabilityService.createVersionSnapshot(
+      req.params.sessionId,
+      parsed.tag || 'checkpoint',
+      parsed.label,
+      parsed.description
+    );
+    res.json({
+      success: true,
+      data: snapshot,
+    });
+  })
+);
+
+// POST /api/sessions/:sessionId/snapshots/:snapshotId/restore - Restore snapshot
+sessionRouter.post(
+  '/:sessionId/snapshots/:snapshotId/restore',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const result = await sessionPortabilityService.restoreVersionSnapshot(
+      req.params.sessionId,
+      req.params.snapshotId
+    );
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);
+
+// GET /api/sessions/:sessionId/snapshots/:snapshotId/diff - Diff snapshot with current
+sessionRouter.get(
+  '/:sessionId/snapshots/:snapshotId/diff',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const result = await sessionPortabilityService.getSnapshotDiff(
+      req.params.sessionId,
+      req.params.snapshotId
+    );
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);
+
+// GET /api/sessions/:sessionId/snapshots/:snapshotId/download - Download snapshot as ZIP
+sessionRouter.get(
+  '/:sessionId/snapshots/:snapshotId/download',
+  validateSessionIdParam(),
+  asyncHandler(async (req, res) => {
+    const { sessionId, snapshotId } = req.params;
+    const sessionDir = sessionService.getSessionDir(sessionId);
+    const targetSnapshotDir = path.join(sessionDir, 'snapshots', snapshotId);
+    if (!fsSync.existsSync(targetSnapshotDir)) {
+      throw ApiError.notFound('Snapshot not found', 'SNAPSHOT_NOT_FOUND');
+    }
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${snapshotId}.zip"`);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    const archive = createZipArchive({ zlib: { level: 6 } });
+    archive.pipe(res);
+    archive.directory(targetSnapshotDir, false);
+    await archive.finalize();
+  })
+);
+
 
 // GET /api/sessions/:sessionId/tree - Nested File Tree
 sessionRouter.get(
