@@ -10,7 +10,7 @@ healthRouter.get('/', async (_req, res) => {
   const [apktool, jadx, zipalign, apksigner, java] = await Promise.all([
     commandService.checkExecutable(env.APKTOOL_BIN, ['-version']),
     commandService.checkExecutable(env.JADX_BIN, ['-v']),
-    commandService.checkExecutable(env.ZIPALIGN_BIN, ['-c', '4', '/dev/null']),
+    commandService.checkExecutable(env.ZIPALIGN_BIN, ['-h']),
     commandService.checkExecutable(env.APKSIGNER_BIN, ['--version']),
     commandService.checkExecutable('java', ['-version']),
   ]);

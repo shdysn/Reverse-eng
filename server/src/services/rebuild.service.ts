@@ -34,7 +34,7 @@ export class RebuildService {
 
       // Check external tools
       const apktoolExists = await commandService.checkExecutable(env.APKTOOL_BIN, ['-version']);
-      const zipalignExists = await commandService.checkExecutable(env.ZIPALIGN_BIN, ['-c', '4', '/dev/null']);
+      const zipalignExists = await commandService.checkExecutable(env.ZIPALIGN_BIN, ['-h']);
       const apksignerExists = await commandService.checkExecutable(env.APKSIGNER_BIN, ['--version']);
 
       if (!apktoolExists || !zipalignExists || !apksignerExists) {
