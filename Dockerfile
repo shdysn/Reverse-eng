@@ -38,8 +38,8 @@ COPY client/package.json ./client/
 COPY server/package.json ./server/
 COPY shared/package.json ./shared/
 
-# Install dependencies across all monorepo workspaces
-RUN npm install
+# Install dependencies across all monorepo workspaces (including devDependencies required for build)
+RUN npm install --include=dev
 
 # Copy application source code
 COPY . .
