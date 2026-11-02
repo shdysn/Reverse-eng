@@ -49,6 +49,7 @@ interface AiCopilotPanelProps {
   onApplyProjectFile?: (proposal: AiProjectFileProposal) => Promise<void>;
   onOpenFile?: (path: string, name: string) => void;
   onRefreshTree?: () => void;
+  onOpenAndroidStudioModal?: () => void;
   isProcessing: boolean;
   lastAiResult: AiPatchResponse | null;
   projectAiResult?: AiProjectSolutionResponse | null;
@@ -65,6 +66,7 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
   onApplyProjectFile,
   onOpenFile,
   onRefreshTree,
+  onOpenAndroidStudioModal,
   isProcessing,
   lastAiResult,
   projectAiResult,
@@ -87,6 +89,9 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [isBatchRunning, setIsBatchRunning] = useState(false);
+  const [batchSummary, setBatchSummary] = useState<string | null>(null);
+  const [applyFeedback, setApplyFeedback] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Load Project Architecture Audit when session changes or switching to recovery tab
@@ -130,7 +135,7 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
     }
   };
 
-  const handleStartFileRecovery = async (overrideFilePath?: string) => {
+  const handleStartFileRecovery = async (overrideFilePath?: string, forceReanalyze = false) => {
     const fileToRecover = overrideFilePath || activeTab?.path;
     if (!sessionId || !fileToRecover || isRecovering) return;
 
@@ -138,7 +143,10 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
     setActiveJobId(jobId);
     setIsRecovering(true);
     setRecoveryError(null);
-    setRecoveryStage('Comparing JADX output with Smali instructions & de-obfuscating symbols...');
+    setApplyFeedback(null);
+    setRecoveryStage(
+      'Correlating JADX & Smali methods, inferring semantic names & running 7-point validation...'
+    );
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -150,12 +158,12 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
           filePath: fileToRecover,
           jobId,
           targetLanguage,
+          forceReanalyze,
         },
         controller.signal
       );
       setRecoveryResult(res);
       if (onRefreshTree) onRefreshTree();
-      // Refresh audit count
       api.getRecoveryAudit(sessionId).then(setAuditData).catch(() => {});
     } catch (err: any) {
       if (err?.name === 'AbortError') {
@@ -185,12 +193,45 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
     setRecoveryStage('Cancelled');
   };
 
-  const handleApplyRecoveredVersion = async (version: 'analyzed' | 'reconstructed') => {
+  const handleRunBatchRecovery = async () => {
+    if (!sessionId || isBatchRunning || isRecovering || !auditData) return;
+    const candidatePaths = auditData.obfuscatedCandidates.slice(0, 4).map((c) => c.filePath);
+    if (candidatePaths.length === 0) return;
+
+    setIsBatchRunning(true);
+    setBatchSummary(null);
+    setRecoveryError(null);
+    try {
+      const status = await api.runBatchRecovery({
+        sessionId,
+        filePaths: candidatePaths,
+        targetLanguage,
+      });
+      const cachedCount = status.results.filter((r) => r.cached).length;
+      setBatchSummary(
+        `Batch complete: ${status.completedFiles}/${status.totalFiles} classes recovered (${cachedCount} cache hits)`
+      );
+      if (onRefreshTree) onRefreshTree();
+      await runArchitectureAudit();
+    } catch (err) {
+      setRecoveryError((err as Error).message);
+    } finally {
+      setIsBatchRunning(false);
+    }
+  };
+
+  const handleApplyRecoveredVersion = async (
+    version: 'analyzed' | 'reconstructed',
+    acceptedSymbolIds: string[],
+    propagateCrossFileReferences: boolean
+  ) => {
     if (!sessionId || !recoveryResult) return;
-    await api.applyRecoveredSource({
+    const res = await api.applyRecoveredSource({
       sessionId,
       filePath: recoveryResult.filePath,
       version,
+      acceptedSymbolIds,
+      propagateCrossFileReferences,
     });
     const newContent =
       version === 'reconstructed'
@@ -199,6 +240,26 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
     if (activeTab && activeTab.path === recoveryResult.filePath) {
       onApplyChanges(newContent);
     }
+    if (res.propagatedFilesCount > 0) {
+      setApplyFeedback(
+        `Applied ${version} source & updated references across ${res.propagatedFilesCount} project file(s).`
+      );
+    } else {
+      setApplyFeedback(`Applied ${version} source (${acceptedSymbolIds.length} symbols accepted).`);
+    }
+    if (onRefreshTree) onRefreshTree();
+  };
+
+  const handleRestoreOriginal = async () => {
+    if (!sessionId || !recoveryResult) return;
+    const res = await api.restoreOriginalSource({
+      sessionId,
+      filePath: recoveryResult.filePath,
+    });
+    if (activeTab && activeTab.path === recoveryResult.filePath) {
+      onApplyChanges(res.content);
+    }
+    setApplyFeedback('Restored original decompiled file from backup.');
     if (onRefreshTree) onRefreshTree();
   };
 
@@ -475,7 +536,7 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
                         {!isRecovering ? (
                           <button
                             type="button"
-                            onClick={() => handleStartFileRecovery()}
+                            onClick={() => handleStartFileRecovery(undefined, Boolean(recoveryResult))}
                             className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-semibold rounded shadow transition-colors"
                           >
                             <Sparkles className="w-3.5 h-3.5" />
@@ -509,6 +570,14 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
                     </>
                   )}
 
+                  {/* Apply Feedback */}
+                  {applyFeedback && (
+                    <div className="p-2 rounded bg-[#238636]/15 border border-[#3fb950]/40 text-[11px] text-[#3fb950] flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>{applyFeedback}</span>
+                    </div>
+                  )}
+
                   {/* Recovery Progress */}
                   {isRecovering && (
                     <div className="p-2.5 bg-[#0d1117] border border-[#58a6ff]/40 rounded animate-pulse space-y-1">
@@ -538,6 +607,11 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
                       <div className="flex items-center gap-1.5 text-xs font-bold text-white">
                         <CheckCircle2 className="w-4 h-4 text-[#3fb950]" />
                         <span>Recovered Source Ready</span>
+                        {recoveryResult.tokenUsage?.cached && (
+                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#21262d] text-[#8b949e]">
+                            Cached
+                          </span>
+                        )}
                       </div>
                       <button
                         type="button"
@@ -545,9 +619,26 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
                         className="text-[11px] font-semibold text-[#58a6ff] hover:underline flex items-center gap-1"
                       >
                         <GitCompare className="w-3 h-3" />
-                        Inspect Diff &amp; Apply
+                        Inspect &amp; Select Symbols
                       </button>
                     </div>
+
+                    {/* 7-Point Validation Badge */}
+                    {recoveryResult.validationReport && (
+                      <div className="flex items-center justify-between px-2 py-1 rounded bg-[#0d1117] border border-[#30363d] text-[10px] font-mono">
+                        <span className="text-[#8b949e]">Validation Suite:</span>
+                        <span
+                          className={
+                            recoveryResult.validationReport.overallPassed
+                              ? 'text-[#3fb950]'
+                              : 'text-[#e3b341]'
+                          }
+                        >
+                          {recoveryResult.validationReport.passedCount}/
+                          {recoveryResult.validationReport.totalChecks} Checks Passed
+                        </span>
+                      </div>
+                    )}
 
                     <p className="text-[11px] text-[#c9d1d9] bg-[#0d1117] p-2 rounded border border-[#30363d] leading-relaxed">
                       {recoveryResult.architectureSummary}
@@ -555,7 +646,11 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
 
                     {recoveryResult.hasSmaliReference && (
                       <div className="text-[10px] text-[#e3b341] bg-[#d29922]/10 border border-[#d29922]/30 p-2 rounded">
-                        <strong>JADX vs. Smali Verification:</strong> {recoveryResult.smaliComparisonNotes}
+                        <strong>
+                          JADX ↔ Smali Correlation ({recoveryResult.methodMappings?.length || 0}{' '}
+                          methods):
+                        </strong>{' '}
+                        {recoveryResult.smaliComparisonNotes}
                       </div>
                     )}
 
@@ -577,8 +672,16 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
                                   <span className="text-[#8b949e] mx-1">→</span>
                                   <strong className="text-[#3fb950]">{sym.suggestedName}</strong>
                                 </span>
-                                <span className="text-[9px] px-1 rounded bg-[#21262d] text-[#8b949e]">
-                                  {sym.symbolType} ({sym.confidence}%)
+                                <span
+                                  className={`text-[9px] px-1 rounded ${
+                                    sym.confidenceLevel === 'HIGH'
+                                      ? 'bg-[#238636]/20 text-[#3fb950]'
+                                      : sym.confidenceLevel === 'MEDIUM'
+                                      ? 'bg-[#d29922]/20 text-[#e3b341]'
+                                      : 'bg-[#21262d] text-[#8b949e]'
+                                  }`}
+                                >
+                                  {sym.confidenceLevel || 'HIGH'} ({sym.confidence}%)
                                 </span>
                               </div>
                               <span className="text-[#8b949e]">{sym.reasoning}</span>
@@ -653,9 +756,9 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
                         </div>
                       </div>
 
-                      {/* Obfuscation Score Bar */}
-                      <div className="p-2 rounded bg-[#0d1117] border border-[#30363d]">
-                        <div className="flex items-center justify-between text-[11px] mb-1">
+                      {/* Obfuscation Score Bar & Structural Breakdown */}
+                      <div className="p-2 rounded bg-[#0d1117] border border-[#30363d] space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px]">
                           <span className="text-[#8b949e]">Obfuscation Level:</span>
                           <span className="font-semibold text-[#e3b341]">
                             {auditData.obfuscationLevel} ({auditData.overallObfuscationScore}%)
@@ -667,15 +770,47 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
                             style={{ width: `${Math.max(8, auditData.overallObfuscationScore)}%` }}
                           />
                         </div>
+                        {(auditData.syntheticClassesCount !== undefined ||
+                          auditData.anonymousInnerClassesCount !== undefined ||
+                          auditData.tokenUsage) && (
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[10px] font-mono text-[#8b949e] border-t border-[#21262d]">
+                            <span>
+                              Synthetic: {auditData.syntheticClassesCount || 0} • Inner:{' '}
+                              {auditData.anonymousInnerClassesCount || 0}
+                            </span>
+                            {auditData.tokenUsage && (
+                              <span>
+                                Tokens: {auditData.tokenUsage.totalTokens.toLocaleString()} (Cache:{' '}
+                                {auditData.tokenUsage.cachedHits})
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Obfuscated / Broken Decompilation Candidates */}
+                      {/* Batch Recovery Action */}
                       {auditData.obfuscatedCandidates.length > 0 && (
-                        <div>
-                          <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#8b949e] mb-1.5 flex items-center justify-between">
-                            <span>Obfuscated / Incomplete Classes</span>
-                            <span className="font-mono">{auditData.obfuscatedCandidates.length}</span>
-                          </h4>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#8b949e]">
+                              Obfuscated / Incomplete Classes ({auditData.obfuscatedCandidates.length})
+                            </h4>
+                            <button
+                              type="button"
+                              disabled={isBatchRunning || isRecovering}
+                              onClick={handleRunBatchRecovery}
+                              className="px-2 py-0.5 rounded bg-[#2f81f7]/20 hover:bg-[#2f81f7]/30 border border-[#58a6ff]/40 text-[#58a6ff] text-[10px] font-semibold transition-colors disabled:opacity-50"
+                            >
+                              {isBatchRunning ? 'Batch Recovering...' : 'Batch Recover Top 4'}
+                            </button>
+                          </div>
+
+                          {batchSummary && (
+                            <div className="p-1.5 rounded bg-[#238636]/15 border border-[#3fb950]/40 text-[10px] text-[#3fb950] font-mono">
+                              {batchSummary}
+                            </div>
+                          )}
+
                           <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
                             {auditData.obfuscatedCandidates.map((cand, idx) => (
                               <div
@@ -691,6 +826,9 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
                                     {cand.incompleteDecompilation && (
                                       <span className="text-[#f85149]">• Incomplete JADX</span>
                                     )}
+                                    {cand.unusualControlFlow && (
+                                      <span className="text-[#e3b341]">• CFG Anomaly</span>
+                                    )}
                                   </div>
                                 </div>
                                 <button
@@ -702,7 +840,7 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
                                     }
                                     handleStartFileRecovery(cand.filePath);
                                   }}
-                                  disabled={isRecovering}
+                                  disabled={isRecovering || isBatchRunning}
                                   className="px-2 py-1 rounded bg-[#238636]/20 hover:bg-[#238636] text-[#3fb950] hover:text-white border border-[#238636]/40 text-[10px] font-semibold shrink-0 transition-colors"
                                 >
                                   Recover
@@ -758,6 +896,61 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
                       )}
                     </div>
                   ) : null}
+                </div>
+
+                {/* 4. Phase 3, 4 & 5: Android Studio Project Reconstruction, Gradle Build, AI Repair & APK Comparison */}
+                <div className="p-3 rounded-lg bg-[#161b22] border border-[#3fb950]/40 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+                      <FolderGit2 className="w-3.5 h-3.5 text-[#3fb950]" />
+                      Project Build, AI Repair &amp; APK Verification
+                    </span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#238636]/20 text-[#3fb950]">
+                      Phases 3–5
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#8b949e] leading-relaxed">
+                    Reconstruct a buildable Android Studio project, execute Gradle tasks, run the 10-step AI Auto-Repair loop, and compare Original APK vs Reconstructed APK across Metadata, Resources, Source Code, UI, Runtime Testing, and 6 Functionality Scores.
+                  </p>
+                  {onOpenAndroidStudioModal && (
+                    <div className="space-y-1.5">
+                      <button
+                        type="button"
+                        onClick={onOpenAndroidStudioModal}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-semibold shadow transition-colors"
+                      >
+                        <GitCompare className="w-3.5 h-3.5" />
+                        <span>Open Project Build, AI Repair &amp; APK Comparison</span>
+                      </button>
+
+                      <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                        <a
+                          href={api.getGradleDownloadUrl(sessionId)}
+                          download="android-studio-project.zip"
+                          className="flex items-center justify-center gap-1 py-1 px-1.5 rounded bg-[#0d1117] hover:bg-[#21262d] border border-[#30363d] text-[#c9d1d9] text-[10px] font-medium"
+                        >
+                          <Box className="w-3 h-3 text-[#58a6ff]" />
+                          <span className="truncate">Project ZIP</span>
+                        </a>
+                        <a
+                          href={api.getFinalExportDownloadUrl(sessionId, 'comparison-report', 'md')}
+                          download="comparison-report.md"
+                          className="flex items-center justify-center gap-1 py-1 px-1.5 rounded bg-[#0d1117] hover:bg-[#21262d] border border-[#30363d] text-[#c9d1d9] text-[10px] font-medium"
+                        >
+                          <FileText className="w-3 h-3 text-[#3fb950]" />
+                          <span className="truncate">Verify (.md)</span>
+                        </a>
+                        <a
+                          href={api.getFinalExportDownloadUrl(sessionId, 'missing-components', 'md')}
+                          download="missing-components.md"
+                          className="flex items-center justify-center gap-1 py-1 px-1.5 rounded bg-[#0d1117] hover:bg-[#21262d] border border-[#30363d] text-[#c9d1d9] text-[10px] font-medium"
+                        >
+                          <AlertTriangle className="w-3 h-3 text-[#e3b341]" />
+                          <span className="truncate">Missing (.md)</span>
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -1176,6 +1369,7 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
         recoveryData={recoveryResult}
         onClose={() => setDiffModalOpen(false)}
         onApplyVersion={handleApplyRecoveredVersion}
+        onRestoreOriginal={handleRestoreOriginal}
         onOpenRecoveredFile={onOpenFile}
       />
     </div>

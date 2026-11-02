@@ -78,7 +78,10 @@ export class FileService {
           const oversized = size > env.MAX_TEXT_BYTES;
           const firstSegment = relPath.split('/')[0];
           const isUnderWritableDir =
-            firstSegment === 'decoded' || firstSegment === 'java' || firstSegment === 'recovered';
+            firstSegment === 'decoded' ||
+            firstSegment === 'java' ||
+            firstSegment === 'recovered' ||
+            firstSegment === 'android-studio-project';
           const editable = !binary && !isImg && !oversized && isUnderWritableDir;
 
           files.push({
@@ -160,7 +163,10 @@ export class FileService {
     const language = getFileLanguage(targetPath);
     const firstSegment = safeRel.split('/')[0];
     const editable =
-      firstSegment === 'decoded' || firstSegment === 'java' || firstSegment === 'recovered';
+      firstSegment === 'decoded' ||
+      firstSegment === 'java' ||
+      firstSegment === 'recovered' ||
+      firstSegment === 'android-studio-project';
     const isSvg = targetPath.toLowerCase().endsWith('.svg');
 
     return {

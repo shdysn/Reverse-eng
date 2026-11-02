@@ -27,6 +27,7 @@ interface ToolbarProps {
   gradleDownloadUrl?: string | null;
   onOpenUpload: () => void;
   onOpenPackageModal?: () => void;
+  onOpenAndroidStudioModal?: () => void;
   onSaveFile: () => void;
   onRescanManifest: () => void;
   onRebuild: () => void;
@@ -47,6 +48,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   gradleDownloadUrl,
   onOpenUpload,
   onOpenPackageModal,
+  onOpenAndroidStudioModal,
   onSaveFile,
   onRescanManifest,
   onRebuild,
@@ -200,17 +202,30 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </a>
         )}
 
-        {/* Download Android Studio Gradle Project ZIP */}
-        {hasSession && gradleDownloadUrl && (
-          <a
-            href={gradleDownloadUrl}
-            download="android-studio-gradle-project.zip"
+        {/* Android Studio Project Reconstruction & Export */}
+        {hasSession && onOpenAndroidStudioModal ? (
+          <button
+            type="button"
+            onClick={onOpenAndroidStudioModal}
             className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#21262d] hover:bg-[#30363d] border border-[#3fb950]/40 text-[#3fb950] hover:text-white rounded text-xs font-medium transition-all shadow-sm active:scale-95"
-            title="Generate & Download ready-to-open Android Studio Gradle Project (ZIP)"
+            title="Reconstruct, Validate & Export Complete Android Studio Gradle Project"
           >
             <FileBox className="w-3.5 h-3.5 text-[#3fb950]" />
-            <span className="hidden lg:inline">Gradle Project</span>
-          </a>
+            <span className="hidden lg:inline">Android Studio Project</span>
+          </button>
+        ) : (
+          hasSession &&
+          gradleDownloadUrl && (
+            <a
+              href={gradleDownloadUrl}
+              download="android-studio-gradle-project.zip"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#21262d] hover:bg-[#30363d] border border-[#3fb950]/40 text-[#3fb950] hover:text-white rounded text-xs font-medium transition-all shadow-sm active:scale-95"
+              title="Generate & Download ready-to-open Android Studio Gradle Project (ZIP)"
+            >
+              <FileBox className="w-3.5 h-3.5 text-[#3fb950]" />
+              <span className="hidden lg:inline">Gradle Project</span>
+            </a>
+          )
         )}
 
         {/* Download Signed APK */}

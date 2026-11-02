@@ -97,6 +97,7 @@ const recoverSourceSchema = z.object({
   filePath: z.string().min(1, 'filePath is required'),
   jobId: z.string().optional(),
   targetLanguage: z.enum(['java', 'kotlin']).optional(),
+  forceReanalyze: z.boolean().optional(),
 });
 
 aiRouter.post(
@@ -145,6 +146,8 @@ const applyRecoverySchema = z.object({
   filePath: z.string().min(1),
   version: z.enum(['analyzed', 'reconstructed']),
   customContent: z.string().optional(),
+  acceptedSymbolIds: z.array(z.string()).optional(),
+  propagateCrossFileReferences: z.boolean().optional(),
 });
 
 aiRouter.post(
@@ -165,4 +168,48 @@ aiRouter.post(
     });
   })
 );
+
+const restoreOriginalSchema = z.object({
+  sessionId: z.string().min(1),
+  filePath: z.string().min(1),
+});
+
+aiRouter.post(
+  '/recovery/restore',
+  asyncHandler(async (req, res) => {
+    const parsed = restoreOriginalSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw ApiError.badRequest('Invalid restore request', 'INVALID_RESTORE_REQUEST');
+    }
+
+    const result = await recoveryService.restoreOriginalSource(parsed.data);
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);
+
+const batchRecoverySchema = z.object({
+  sessionId: z.string().min(1),
+  filePaths: z.array(z.string()).min(1),
+  targetLanguage: z.enum(['java', 'kotlin']).optional(),
+});
+
+aiRouter.post(
+  '/recovery/batch',
+  asyncHandler(async (req, res) => {
+    const parsed = batchRecoverySchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw ApiError.badRequest('Invalid batch recovery request', 'INVALID_BATCH_REQUEST');
+    }
+
+    const result = await recoveryService.runBatchRecovery(parsed.data);
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);
+
 

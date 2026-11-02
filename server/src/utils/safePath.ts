@@ -68,13 +68,13 @@ export async function resolveSafePath(
     }
   }
 
-  // 5. If writing/modifying, enforce allowed directories (only decoded/, java/, or recovered/)
+  // 5. If writing/modifying, enforce allowed directories (only decoded/, java/, recovered/, or android-studio-project/)
   if (checkWritable) {
     const firstSegment = rel.split(path.sep)[0];
-    const allowedWritablePrefixes = ['decoded', 'java', 'recovered'];
+    const allowedWritablePrefixes = ['decoded', 'java', 'recovered', 'android-studio-project'];
     if (!allowedWritablePrefixes.includes(firstSegment)) {
       throw ApiError.forbidden(
-        `File modification is only permitted in decoded/, java/, and recovered/ directories. '${firstSegment}' is read-only.`,
+        `File modification is only permitted in decoded/, java/, recovered/, and android-studio-project/ directories. '${firstSegment}' is read-only.`,
         'READ_ONLY_LOCATION'
       );
     }

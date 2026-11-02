@@ -8,6 +8,7 @@ import { ManifestScanner } from './components/ManifestScanner.js';
 import { AiCopilotPanel } from './components/AiCopilotPanel.js';
 import { ApkUpload } from './components/ApkUpload.js';
 import { PackageNameModal } from './components/PackageNameModal.js';
+import { AndroidStudioProjectModal } from './components/AndroidStudioProjectModal.js';
 import { MobilePanels } from './components/MobilePanels.js';
 import { useSession } from './hooks/useSession.js';
 import { useEditorTabs } from './hooks/useEditorTabs.js';
@@ -59,6 +60,7 @@ export function App() {
   const [rightPanelTab, setRightPanelTab] = useState<'ai' | 'security'>('ai');
   const [mobileAiOpen, setMobileAiOpen] = useState(false);
   const [packageModalOpen, setPackageModalOpen] = useState(false);
+  const [androidStudioModalOpen, setAndroidStudioModalOpen] = useState(false);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [lastAiResult, setLastAiResult] = useState<AiPatchResponse | null>(null);
   const [projectAiResult, setProjectAiResult] = useState<AiProjectSolutionResponse | null>(null);
@@ -228,6 +230,7 @@ export function App() {
         gradleDownloadUrl={sessionId ? api.getGradleDownloadUrl(sessionId) : null}
         onOpenUpload={() => setUploadModalOpen(true)}
         onOpenPackageModal={() => setPackageModalOpen(true)}
+        onOpenAndroidStudioModal={() => setAndroidStudioModalOpen(true)}
         onSaveFile={saveCurrentFile}
         onRescanManifest={() => {
           if (sessionId) loadManifest(sessionId);
@@ -329,6 +332,7 @@ export function App() {
                 onRefreshTree={() => {
                   if (sessionId) loadTree(sessionId);
                 }}
+                onOpenAndroidStudioModal={() => setAndroidStudioModalOpen(true)}
                 isProcessing={isAiProcessing}
                 lastAiResult={lastAiResult}
                 projectAiResult={projectAiResult}
@@ -384,6 +388,17 @@ export function App() {
               .then((data) => updateContent(data.content))
               .catch(() => {});
           }
+        }}
+      />
+
+      {/* Phase 3: Android Studio Project Reconstruction & Export Modal */}
+      <AndroidStudioProjectModal
+        isOpen={androidStudioModalOpen}
+        sessionId={sessionId}
+        onClose={() => setAndroidStudioModalOpen(false)}
+        onOpenFile={openFile}
+        onRefreshTree={() => {
+          if (sessionId) loadTree(sessionId);
         }}
       />
 
